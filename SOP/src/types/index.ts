@@ -143,6 +143,8 @@ export type SOP = {
   created_by_name?: string;
   created_at: string;
   updated_at: string;
+  questionnaire_count?: number;
+  shadowing_count?: number;
   steps?: SOPStep[];
   responsibilities?: SOPResponsibility[];
   troubleshooting_items?: SOPTroubleshooting[];

@@ -3,6 +3,8 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { SOPDetail } from './pages/SOPDetail';
+import { SOPQuestionnaires } from './pages/SOPQuestionnaires';
+import { SOPShadowing } from './pages/SOPShadowing';
 import { QuestionnaireForm } from './pages/QuestionnaireForm';
 import { ShadowingForm } from './pages/ShadowingForm';
 import { AdminSettings } from './pages/AdminSettings';
@@ -50,6 +52,8 @@ function AppRoutes() {
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
       <Route path="/sop/:id" element={<ProtectedRoute><SOPDetail /></ProtectedRoute>} />
+      <Route path="/sop/:id/questionnaires" element={<ProtectedRoute><SOPQuestionnaires /></ProtectedRoute>} />
+      <Route path="/sop/:id/shadowing" element={<ProtectedRoute><SOPShadowing /></ProtectedRoute>} />
       <Route path="/sop/:sopId/questionnaire/new" element={<ProtectedRoute><QuestionnaireForm /></ProtectedRoute>} />
       <Route path="/sop/:sopId/shadowing/new" element={<ProtectedRoute><ShadowingForm /></ProtectedRoute>} />
 

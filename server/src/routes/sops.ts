@@ -53,7 +53,12 @@ router.get('/', (req: AuthRequest, res: Response) => {
   `).run();
 
   const sops = db.prepare(`
-    SELECT s.*, u.name as created_by_name, a.name as approved_by_name, asn.name as assigned_to_name
+    SELECT s.*,
+      u.name as created_by_name,
+      a.name as approved_by_name,
+      asn.name as assigned_to_name,
+      (SELECT COUNT(*) FROM questionnaires WHERE sop_id = s.id) as questionnaire_count,
+      (SELECT COUNT(*) FROM shadowing_observations WHERE sop_id = s.id) as shadowing_count
     FROM sops s
     LEFT JOIN users u ON s.created_by = u.id
     LEFT JOIN users a ON s.approved_by = a.id
