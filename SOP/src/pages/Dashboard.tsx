@@ -260,7 +260,7 @@ export function Dashboard() {
                 </div>
               </Link>
               {/* Quick action buttons */}
-              <div className="absolute bottom-3 left-4 flex gap-2">
+              <div className="absolute bottom-3 right-4 flex gap-2">
                 <Link
                   to={`/sop/${sop.id}/questionnaires`}
                   onClick={(e) => e.stopPropagation()}
