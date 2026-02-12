@@ -31,7 +31,6 @@ export function SOPDetail() {
   const [currentStep, setCurrentStep] = useState(0);
   const [versions, setVersions] = useState<SOPVersion[]>([]);
   const [approvals, setApprovals] = useState<SOPApproval[]>([]);
-  const [approvalComment, setApprovalComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const loadSop = useCallback(async () => {
@@ -222,39 +221,6 @@ export function SOPDetail() {
       await loadVersionsAndApprovals();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit for approval');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleApprove = async (approvalId: number) => {
-    if (!id) return;
-    setSubmitting(true);
-    try {
-      await sops.approve(parseInt(id), approvalId, approvalComment);
-      setApprovalComment('');
-      await loadSop();
-      await loadVersionsAndApprovals();
-    } catch (err) {
-      setError('Failed to approve');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleReject = async (approvalId: number) => {
-    if (!id || !approvalComment.trim()) {
-      setError('Please provide a reason for rejection');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await sops.reject(parseInt(id), approvalId, approvalComment);
-      setApprovalComment('');
-      await loadSop();
-      await loadVersionsAndApprovals();
-    } catch (err) {
-      setError('Failed to reject');
     } finally {
       setSubmitting(false);
     }
@@ -739,8 +705,6 @@ export function SOPDetail() {
   );
 
   const renderHistoryStep = () => {
-    const pendingApproval = approvals.find(a => a.status === 'pending');
-
     return (
       <div className="space-y-6">
         {/* Approval Workflow */}
@@ -763,48 +727,24 @@ export function SOPDetail() {
             </div>
           )}
 
-          {/* Pending Approval (Admin actions) */}
-          {sop?.status === 'pending_approval' && pendingApproval && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-              <p className="text-yellow-800 mb-2">
-                <strong>Awaiting Approval</strong> - Submitted by {pendingApproval.requested_by_name} on {new Date(pendingApproval.requested_at).toLocaleDateString()}
+          {/* Pending Approval Notice */}
+          {sop?.status === 'pending_approval' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center gap-2 text-blue-700">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-medium">Pending Approval</span>
+              </div>
+              <p className="text-blue-600 text-sm mt-1">
+                This SOP is pending approval. {isAdmin ? (
+                  <Link to="/approvals" className="underline hover:no-underline">
+                    Review in Approval Dashboard
+                  </Link>
+                ) : (
+                  'An admin will review it shortly.'
+                )}
               </p>
-
-              {isAdmin && (
-                <div className="mt-4">
-                  <div className="form-group">
-                    <label className="label">Comments (required for rejection)</label>
-                    <textarea
-                      value={approvalComment}
-                      onChange={(e) => setApprovalComment(e.target.value)}
-                      className="input min-h-[80px]"
-                      placeholder="Add comments for approval or rejection..."
-                    />
-                  </div>
-                  <div className="flex gap-3 mt-3">
-                    <button
-                      onClick={() => handleApprove(pendingApproval.id)}
-                      disabled={submitting}
-                      className="btn btn-primary"
-                    >
-                      {submitting ? 'Processing...' : 'Approve'}
-                    </button>
-                    <button
-                      onClick={() => handleReject(pendingApproval.id)}
-                      disabled={submitting || !approvalComment.trim()}
-                      className="btn btn-danger"
-                    >
-                      {submitting ? 'Processing...' : 'Reject'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {!isAdmin && (
-                <p className="text-gray-600 text-sm mt-2">
-                  An admin will review this SOP shortly.
-                </p>
-              )}
             </div>
           )}
 
