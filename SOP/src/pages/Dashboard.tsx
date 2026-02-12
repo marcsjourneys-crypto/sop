@@ -37,6 +37,20 @@ export function Dashboard() {
     }
   };
 
+  const handleDeleteSop = async (e: React.MouseEvent, sopId: number, sopNumber: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!confirm(`Delete ${sopNumber}? This cannot be undone.`)) return;
+
+    try {
+      await sops.delete(sopId);
+      setSopList(sopList.filter(s => s.id !== sopId));
+    } catch (err) {
+      setError('Failed to delete SOP');
+    }
+  };
+
   const filteredSops = sopList.filter((sop) => {
     if (filter !== 'all' && sop.status !== filter) return false;
     if (search) {
@@ -114,32 +128,39 @@ export function Dashboard() {
       ) : (
         <div className="grid gap-4">
           {filteredSops.map((sop) => (
-            <Link
-              key={sop.id}
-              to={`/sop/${sop.id}`}
-              className="card hover:shadow-lg transition-shadow"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className="font-mono font-bold text-esi-blue">{sop.sop_number}</span>
-                    <StatusBadge status={sop.status} />
+            <div key={sop.id} className="card hover:shadow-lg transition-shadow relative">
+              <Link to={`/sop/${sop.id}`} className="block">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="font-mono font-bold text-esi-blue">{sop.sop_number}</span>
+                      <StatusBadge status={sop.status} />
+                    </div>
+                    <h3 className="font-semibold text-gray-900">
+                      {sop.process_name || 'Untitled Process'}
+                    </h3>
+                    {sop.department && (
+                      <p className="text-sm text-gray-500">{sop.department}</p>
+                    )}
                   </div>
-                  <h3 className="font-semibold text-gray-900">
-                    {sop.process_name || 'Untitled Process'}
-                  </h3>
-                  {sop.department && (
-                    <p className="text-sm text-gray-500">{sop.department}</p>
-                  )}
+                  <div className="text-sm text-gray-400 text-right">
+                    {sop.review_due_date && (
+                      <div>Review: {new Date(sop.review_due_date).toLocaleDateString()}</div>
+                    )}
+                    <div>Updated: {new Date(sop.updated_at).toLocaleDateString()}</div>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-400">
-                  {sop.review_due_date && (
-                    <div>Review: {new Date(sop.review_due_date).toLocaleDateString()}</div>
-                  )}
-                  <div>Updated: {new Date(sop.updated_at).toLocaleDateString()}</div>
-                </div>
-              </div>
-            </Link>
+              </Link>
+              <button
+                onClick={(e) => handleDeleteSop(e, sop.id, sop.sop_number)}
+                className="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                title="Delete SOP"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
           ))}
         </div>
       )}
