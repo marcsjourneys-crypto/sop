@@ -242,7 +242,234 @@ async function seed() {
 
     console.log('Sample SOPs created successfully!');
   } else {
-    console.log('SOPs already exist, skipping sample data');
+    console.log('SOPs already exist, skipping SOP creation');
+  }
+
+  // Seed Questionnaires (separate from SOPs so they can be added to existing SOPs)
+  const existingQuestionnaires = db.prepare('SELECT COUNT(*) as count FROM questionnaires').get() as { count: number };
+
+  if (existingQuestionnaires.count === 0) {
+    console.log('Creating sample questionnaires...');
+
+    // Look up SOP IDs by sop_number
+    const getSopId = (sopNumber: string) => {
+      const result = db.prepare('SELECT id FROM sops WHERE sop_number = ?').get(sopNumber) as { id: number } | undefined;
+      return result?.id;
+    };
+
+    const sop1Id = getSopId('SOP-001');
+    const sop3Id = getSopId('SOP-003');
+    const sop5Id = getSopId('SOP-005');
+
+    if (sop1Id) {
+      // Questionnaire 1 for SOP-001 (Equipment Calibration)
+      db.prepare(`
+        INSERT INTO questionnaires (
+          sop_id, employee_name, department, position, interviewer, interview_date,
+          q1_primary_responsibilities, q2_start_time, q3_must_complete_daily,
+          q5_common_process, q6_tools_equipment, q10_common_mistakes,
+          q21_not_written_down, q25_change_one_thing
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        sop1Id,
+        'Mike Rodriguez',
+        'Quality Assurance',
+        'Senior Calibration Technician',
+        'Sarah Chen',
+        '2024-11-15',
+        'Calibrating precision measurement instruments, maintaining calibration schedules, documenting results',
+        '6:00 AM - Need to start early to complete calibrations before production needs equipment',
+        'Complete at least 10 calibrations, update the master schedule, verify all standards are current',
+        'Multimeter calibration - its the most common equipment we have',
+        'Fluke calibrators, NIST-traceable standards, calibration software v3.2',
+        'People rush through the warm-up period. Equipment needs 30 minutes to stabilize but techs sometimes start immediately.',
+        'The trick to calibrating the old Keithley meters - you need to tap the case gently after powering on or readings drift',
+        'Better lighting in the calibration lab - its hard to read small displays in dim conditions'
+      );
+
+      // Questionnaire 2 for SOP-001
+      db.prepare(`
+        INSERT INTO questionnaires (
+          sop_id, employee_name, department, position, interviewer, interview_date,
+          q1_primary_responsibilities, q5_common_process, q10_common_mistakes,
+          q13_regular_problems, q22_new_person_struggle
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        sop1Id,
+        'Jennifer Walsh',
+        'Quality Assurance',
+        'Calibration Technician',
+        'Sarah Chen',
+        '2024-11-18',
+        'Performing routine calibrations, maintaining equipment logs, assisting senior techs',
+        'Pressure gauge calibration - we have over 200 in the plant',
+        'Not letting digital gauges stabilize before taking readings. Also forgetting to zero the reference standard.',
+        'Equipment being returned late from production - throws off the whole schedule',
+        'Understanding which calibration procedure applies to which equipment model. The naming conventions are confusing.'
+      );
+    }
+
+    if (sop3Id) {
+      // Questionnaire 3 for SOP-003 (Employee Onboarding)
+      db.prepare(`
+        INSERT INTO questionnaires (
+          sop_id, employee_name, department, position, interviewer, interview_date,
+          q1_primary_responsibilities, q3_must_complete_daily, q17_interact_with,
+          q21_not_written_down, q24_training_advice, q27_time_wasters
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        sop3Id,
+        'Amanda Foster',
+        'Human Resources',
+        'HR Coordinator',
+        'David Kim',
+        '2024-12-01',
+        'Managing new hire paperwork, coordinating orientation schedules, setting up HRIS profiles',
+        'Check for new hire confirmations, respond to candidate questions, update onboarding tracker',
+        'IT for equipment setup, hiring managers for schedules, payroll for direct deposit, security for badges',
+        'The order you need to enter things in the HRIS matters - benefits enrollment has to happen before the welcome email triggers',
+        'Shadow an experienced coordinator for at least 3 full onboarding cycles before doing one solo',
+        'Chasing down managers who forget to complete their portion of the onboarding checklist'
+      );
+    }
+
+    if (sop5Id) {
+      // Questionnaire 4 for SOP-005 (Customer Complaints)
+      db.prepare(`
+        INSERT INTO questionnaires (
+          sop_id, employee_name, department, position, interviewer, interview_date,
+          q1_primary_responsibilities, q5_common_process, q14_solve_problems,
+          q15_escalate_vs_solve, q25_change_one_thing
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        sop5Id,
+        'Carlos Mendez',
+        'Customer Service',
+        'Senior CS Representative',
+        'Lisa Park',
+        '2024-12-10',
+        'Handling escalated complaints, training new reps, reviewing complaint trends',
+        'Shipping damage claims - about 40% of our complaints. Customer sends photos, we file carrier claim.',
+        'Check the order history first - 80% of issues are repeat problems that have known solutions',
+        'If it requires a refund over $500 or involves potential safety issues, escalate immediately. Otherwise try to resolve.',
+        'Give reps more authority to issue small credits without manager approval. $25 limit is too low.'
+      );
+    }
+
+    console.log('Created 4 sample questionnaires');
+  } else {
+    console.log('Questionnaires already exist, skipping');
+  }
+
+  // Seed Shadowing Observations
+  const existingShadowing = db.prepare('SELECT COUNT(*) as count FROM shadowing_observations').get() as { count: number };
+
+  if (existingShadowing.count === 0) {
+    console.log('Creating sample shadowing observations...');
+
+    const getSopId = (sopNumber: string) => {
+      const result = db.prepare('SELECT id FROM sops WHERE sop_number = ?').get(sopNumber) as { id: number } | undefined;
+      return result?.id;
+    };
+
+    const sop1Id = getSopId('SOP-001');
+    const sop2Id = getSopId('SOP-002');
+    const sop3Id = getSopId('SOP-003');
+
+    if (sop1Id) {
+      // Shadowing 1 for SOP-001 (Equipment Calibration)
+      db.prepare(`
+        INSERT INTO shadowing_observations (
+          sop_id, employee_observed, department, position, observer, observation_date,
+          time_from, time_to, process_to_observe, process_steps,
+          time_total, time_searching_tools, waiting_for, bottlenecks,
+          key_observations, undocumented_knowledge, sop_recommendations
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        sop1Id,
+        'Mike Rodriguez',
+        'Quality Assurance',
+        'Senior Calibration Technician',
+        'Sarah Chen',
+        '2024-11-20',
+        '06:30',
+        '09:30',
+        'Multimeter calibration process',
+        '1. Retrieved equipment from rack\n2. Powered on and waited for warm-up\n3. Connected to calibration standard\n4. Ran 5-point calibration\n5. Documented results\n6. Applied new sticker\n7. Returned to rack',
+        '45 minutes per unit',
+        '10 minutes looking for correct test leads',
+        'Calibration software to load - takes 3 minutes each time',
+        'Only one calibration standard available - creates queue when multiple techs working',
+        'Mike has an efficient workflow but spends time helping newer techs. The software load time is a real bottleneck.',
+        'Mike taps the Keithley meters to settle them. He also keeps a personal log of which standards drift fastest.',
+        'Add section on software startup. Consider purchasing second calibration standard for high-volume periods.'
+      );
+    }
+
+    if (sop2Id) {
+      // Shadowing 2 for SOP-002 (Safety Inspection)
+      db.prepare(`
+        INSERT INTO shadowing_observations (
+          sop_id, employee_observed, department, position, observer, observation_date,
+          time_from, time_to, process_to_observe, process_steps,
+          time_total, searching_for, bottlenecks,
+          decision_point_1_situation, decision_point_1_options, decision_point_1_decision, decision_point_1_reasoning,
+          key_observations, sop_recommendations
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        sop2Id,
+        'Tom Bradley',
+        'Safety',
+        'Safety Officer',
+        'Maria Santos',
+        '2024-10-15',
+        '08:00',
+        '11:30',
+        'Monthly safety walkthrough - Building A',
+        '1. Reviewed previous month report\n2. Started at loading dock\n3. Checked fire extinguishers\n4. Inspected emergency exits\n5. Interviewed 3 workers\n6. Documented findings\n7. Drafted report',
+        '3.5 hours for one building',
+        'Previous inspection photos to compare current state',
+        'Production supervisor was in a meeting - had to wait 20 min for area access',
+        'Found blocked emergency exit with pallets',
+        'Clear immediately vs. document and assign corrective action',
+        'Cleared immediately and documented',
+        'Safety hazard requiring immediate action per policy - couldnt leave and come back',
+        'Tom uses a mental checklist beyond the official form. He knows which areas historically have issues.',
+        'Add photo comparison feature to inspection app. Include area-specific historical notes.'
+      );
+    }
+
+    if (sop3Id) {
+      // Shadowing 3 for SOP-003 (Employee Onboarding)
+      db.prepare(`
+        INSERT INTO shadowing_observations (
+          sop_id, employee_observed, department, position, observer, observation_date,
+          time_from, time_to, process_to_observe, process_steps,
+          time_total, time_searching_tools, rework_due_to,
+          key_observations, efficiency_improvements
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        sop3Id,
+        'Amanda Foster',
+        'Human Resources',
+        'HR Coordinator',
+        'David Kim',
+        '2024-12-05',
+        '08:30',
+        '12:00',
+        'New hire first day orientation',
+        '1. Greeted new hire at reception\n2. Badge photo and printing\n3. Paperwork completion\n4. Benefits overview\n5. IT equipment setup\n6. Tour of facility\n7. Introduction to team',
+        '3.5 hours',
+        '15 minutes finding correct I-9 form version',
+        'Badge printer jam - had to restart process',
+        'Amanda handles interruptions smoothly. She keeps a physical checklist even though theres a digital one.',
+        'Pre-print all forms day before. Test badge printer morning of. Have backup plan for IT delays.'
+      );
+    }
+
+    console.log('Created 3 sample shadowing observations');
+  } else {
+    console.log('Shadowing observations already exist, skipping');
   }
 
   console.log('Seed completed');
