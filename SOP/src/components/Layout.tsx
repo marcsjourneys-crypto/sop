@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -6,6 +7,16 @@ export function Layout({ children }: { children: ReactNode }) {
   const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [approvalCount, setApprovalCount] = useState(0);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetch('/api/approvals/count', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => setApprovalCount(data.count))
+        .catch(() => setApprovalCount(0));
+    }
+  }, [isAdmin, location.pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -36,6 +47,19 @@ export function Layout({ children }: { children: ReactNode }) {
 
               {isAdmin && (
                 <>
+                  <Link
+                    to="/approvals"
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
+                      location.pathname.startsWith('/approvals') ? 'bg-white/20' : 'hover:bg-white/10'
+                    }`}
+                  >
+                    Approvals
+                    {approvalCount > 0 && (
+                      <span className="bg-white/20 text-white px-1.5 py-0.5 rounded-full text-xs">
+                        {approvalCount}
+                      </span>
+                    )}
+                  </Link>
                   <Link
                     to="/admin/users"
                     className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
