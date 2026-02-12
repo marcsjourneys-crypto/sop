@@ -5,7 +5,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { SaveIndicator } from '../components/SaveIndicator';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { sops } from '../api/client';
-import { SOP, SOPStep, SOPResponsibility } from '../types';
+import type { SOP, SOPStep } from '../types';
 
 export function SOPDetail() {
   const { id } = useParams<{ id: string }>();

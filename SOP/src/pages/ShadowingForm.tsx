@@ -4,7 +4,7 @@ import { Layout } from '../components/Layout';
 import { SaveIndicator } from '../components/SaveIndicator';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { shadowing, sops } from '../api/client';
-import { ShadowingObservation, SOP } from '../types';
+import type { ShadowingObservation, SOP } from '../types';
 
 export function ShadowingForm() {
   const { id, sopId } = useParams<{ id?: string; sopId?: string }>();

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { StatusBadge } from '../components/StatusBadge';
 import { sops } from '../api/client';
-import { SOP } from '../types';
+import type { SOP } from '../types';
 
 export function Dashboard() {
   const [sopList, setSopList] = useState<SOP[]>([]);

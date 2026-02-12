@@ -4,7 +4,7 @@ import { Layout } from '../components/Layout';
 import { SaveIndicator } from '../components/SaveIndicator';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { questionnaires, sops } from '../api/client';
-import { Questionnaire, SOP } from '../types';
+import type { Questionnaire, SOP } from '../types';
 
 export function QuestionnaireForm() {
   const { id, sopId } = useParams<{ id?: string; sopId?: string }>();

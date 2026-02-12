@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { users } from '../api/client';
-import { User } from '../types';
+import type { User } from '../types';
 
 export function AdminUsers() {
   const [userList, setUserList] = useState<(User & { active?: number })[]>([]);

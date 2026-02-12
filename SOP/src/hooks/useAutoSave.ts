@@ -11,7 +11,7 @@ export function useAutoSave<T>({ data, onSave, delay = 1500, enabled = true }: U
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDataRef = useRef<string>('');
 
   const save = useCallback(async (dataToSave: T) => {

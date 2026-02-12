@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { settings } from '../api/client';
-import { Settings } from '../types';
+import type { Settings } from '../types';
 
 export function AdminSettings() {
   const [form, setForm] = useState<Settings>({ review_period_days: '90' });
