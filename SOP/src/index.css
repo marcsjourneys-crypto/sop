@@ -4,12 +4,13 @@
 
 @layer base {
   html {
-    font-family: Arial, sans-serif;
+    @apply font-sans;
   }
 
   body {
     margin: 0;
     min-width: 320px;
+    @apply antialiased text-gray-900;
   }
 }
 

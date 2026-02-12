@@ -210,6 +210,30 @@ export function initializeDatabase() {
       comments TEXT
     );
 
+    -- Workflow Steps (configurable workflow stages)
+    CREATE TABLE IF NOT EXISTS workflow_steps (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      step_order INTEGER NOT NULL,
+      status_key TEXT NOT NULL UNIQUE,
+      display_label TEXT NOT NULL,
+      color TEXT NOT NULL DEFAULT 'gray',
+      is_initial INTEGER DEFAULT 0,
+      is_final INTEGER DEFAULT 0,
+      requires_approval INTEGER DEFAULT 0,
+      can_edit INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Workflow Transitions (allowed status changes)
+    CREATE TABLE IF NOT EXISTS workflow_transitions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      from_status TEXT NOT NULL,
+      to_status TEXT NOT NULL,
+      requires_admin INTEGER DEFAULT 0,
+      auto_creates_approval INTEGER DEFAULT 0,
+      UNIQUE(from_status, to_status)
+    );
+
     -- Create indexes for better query performance
     CREATE INDEX IF NOT EXISTS idx_sops_status ON sops(status);
     CREATE INDEX IF NOT EXISTS idx_sops_department ON sops(department);
@@ -218,6 +242,7 @@ export function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_shadowing_sop_id ON shadowing_observations(sop_id);
     CREATE INDEX IF NOT EXISTS idx_sop_versions_sop_id ON sop_versions(sop_id);
     CREATE INDEX IF NOT EXISTS idx_sop_approvals_sop_id ON sop_approvals(sop_id);
+    CREATE INDEX IF NOT EXISTS idx_workflow_steps_order ON workflow_steps(step_order);
   `);
 
   // Migration: Add assigned_to column to sops table if it doesn't exist
@@ -233,6 +258,34 @@ export function initializeDatabase() {
   // Insert default settings if not exist
   const insertSetting = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
   insertSetting.run('review_period_days', '90');
+
+  // Seed default workflow steps if none exist
+  const workflowCount = db.prepare('SELECT COUNT(*) as count FROM workflow_steps').get() as { count: number };
+  if (workflowCount.count === 0) {
+    const insertStep = db.prepare(`
+      INSERT INTO workflow_steps (step_order, status_key, display_label, color, is_initial, is_final, requires_approval, can_edit)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    insertStep.run(1, 'draft', 'Draft', 'yellow', 1, 0, 0, 1);
+    insertStep.run(2, 'review', 'Review', 'red', 0, 0, 0, 1);
+    insertStep.run(3, 'pending_approval', 'Pending Approval', 'blue', 0, 0, 1, 0);
+    insertStep.run(4, 'active', 'Active', 'green', 0, 1, 0, 0);
+
+    // Seed default transitions
+    const insertTransition = db.prepare(`
+      INSERT INTO workflow_transitions (from_status, to_status, requires_admin, auto_creates_approval)
+      VALUES (?, ?, ?, ?)
+    `);
+    insertTransition.run('draft', 'review', 0, 0);
+    insertTransition.run('review', 'draft', 0, 0);
+    insertTransition.run('draft', 'pending_approval', 0, 1);
+    insertTransition.run('review', 'pending_approval', 0, 1);
+    insertTransition.run('pending_approval', 'draft', 1, 0);  // rejection
+    insertTransition.run('pending_approval', 'active', 1, 0); // approval
+    insertTransition.run('active', 'review', 1, 0);           // send back for review
+
+    console.log('Default workflow configuration seeded');
+  }
 
   console.log('Database initialized successfully');
 }

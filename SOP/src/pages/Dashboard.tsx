@@ -7,6 +7,8 @@ import { StatusBadge } from '../components/StatusBadge';
 import { DraggableSopCard } from '../components/DraggableSopCard';
 import { DroppableColumn } from '../components/DroppableColumn';
 import { AssignUserModal } from '../components/AssignUserModal';
+import { SkeletonCard, SkeletonKanbanColumn } from '../components/Skeleton';
+import { useToast } from '../components/Toast';
 import { sops } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
 import { canDrag, isDroppableColumn } from '../utils/permissions';
@@ -24,6 +26,7 @@ export function Dashboard() {
   const [assignModalSop, setAssignModalSop] = useState<SOP | null>(null);
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
+  const { addToast } = useToast();
 
   useEffect(() => {
     loadSops();
@@ -58,8 +61,9 @@ export function Dashboard() {
     try {
       await sops.delete(sopId);
       setSopList(sopList.filter(s => s.id !== sopId));
+      addToast(`${sopNumber} deleted`, 'success');
     } catch (err) {
-      setError('Failed to delete SOP');
+      addToast('Failed to delete SOP', 'error');
     }
   };
 
@@ -84,7 +88,7 @@ export function Dashboard() {
 
     // Check if transition is allowed
     if (!isDroppableColumn(targetStatus, sop.status, isAdmin)) {
-      setError(`Cannot move from ${sop.status} to ${targetStatus}`);
+      addToast(`Cannot move from ${sop.status} to ${targetStatus}`, 'warning');
       return;
     }
 
@@ -96,10 +100,11 @@ export function Dashboard() {
 
     try {
       await sops.updateStatus(sop.id, targetStatus);
+      addToast(`Moved ${sop.sop_number} to ${targetStatus}`, 'success');
     } catch (err) {
       // Rollback on error
       setSopList(originalList);
-      setError('Failed to update SOP status');
+      addToast('Failed to update SOP status', 'error');
     }
   };
 
@@ -109,9 +114,10 @@ export function Dashboard() {
     try {
       const updatedSop = await sops.assign(sopId, userId);
       setSopList(sopList.map(s => s.id === sopId ? updatedSop : s));
+      addToast(userId ? 'User assigned successfully' : 'User unassigned', 'success');
     } catch (err) {
       setSopList(originalList);
-      setError('Failed to assign user');
+      addToast('Failed to assign user', 'error');
     }
   };
 
@@ -224,8 +230,10 @@ export function Dashboard() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12">
-          <div className="text-gray-500">Loading...</div>
+        <div className="grid gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <SkeletonCard key={i} />
+          ))}
         </div>
       ) : filteredSops.length === 0 ? (
         <div className="text-center py-12">
@@ -343,6 +351,13 @@ export function Dashboard() {
             </select>
           </div>
 
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <SkeletonKanbanColumn key={i} />
+              ))}
+            </div>
+          ) : (
           <DndContext
             collisionDetection={pointerWithin}
             onDragStart={handleDragStart}
@@ -454,7 +469,7 @@ export function Dashboard() {
               )}
             </DragOverlay>
           </DndContext>
-
+          )}
         </>
       )}
 

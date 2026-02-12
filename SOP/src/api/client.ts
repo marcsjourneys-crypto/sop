@@ -1,4 +1,4 @@
-import type { User, SOP, SOPStep, SOPResponsibility, SOPTroubleshooting, SOPRevision, SOPVersion, SOPApproval, Questionnaire, ShadowingObservation, Settings, PendingApproval, ApprovalDetail, ChangeItem } from '../types';
+import type { User, SOP, SOPStep, SOPResponsibility, SOPTroubleshooting, SOPRevision, SOPVersion, SOPApproval, Questionnaire, ShadowingObservation, Settings, PendingApproval, ApprovalDetail, ChangeItem, WorkflowStep, WorkflowTransition } from '../types';
 
 const API_BASE = '/api';
 
@@ -221,4 +221,36 @@ export const settings = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+};
+
+// Workflow
+export const workflow = {
+  getSteps: () => request<WorkflowStep[]>('/workflow/steps'),
+  getTransitions: () => request<WorkflowTransition[]>('/workflow/transitions'),
+  addStep: (data: { status_key: string; display_label: string; color?: string; requires_approval?: boolean; can_edit?: boolean }) =>
+    request<WorkflowStep>('/workflow/steps', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateStep: (id: number, data: Partial<WorkflowStep>) =>
+    request<WorkflowStep>(`/workflow/steps/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteStep: (id: number) =>
+    request<{ message: string }>(`/workflow/steps/${id}`, { method: 'DELETE' }),
+  reorderSteps: (order: { id: number; step_order: number }[]) =>
+    request<WorkflowStep[]>('/workflow/steps/reorder', {
+      method: 'PUT',
+      body: JSON.stringify({ order }),
+    }),
+  updateTransitions: (transitions: Partial<WorkflowTransition>[]) =>
+    request<WorkflowTransition[]>('/workflow/transitions', {
+      method: 'PUT',
+      body: JSON.stringify({ transitions }),
+    }),
+  canTransition: (fromStatus: string, toStatus: string) =>
+    request<{ allowed: boolean; reason?: string; auto_creates_approval?: boolean }>(
+      `/workflow/can-transition?from_status=${fromStatus}&to_status=${toStatus}`
+    ),
 };

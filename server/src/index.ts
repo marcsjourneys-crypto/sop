@@ -11,6 +11,7 @@ import shadowingRoutes from './routes/shadowing.js';
 import usersRoutes from './routes/users.js';
 import settingsRoutes from './routes/settings.js';
 import approvalsRoutes from './routes/approvals.js';
+import workflowRoutes from './routes/workflow.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -35,6 +36,7 @@ app.use('/api/shadowing', shadowingRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/approvals', approvalsRoutes);
+app.use('/api/workflow', workflowRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

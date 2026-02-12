@@ -254,3 +254,25 @@ export type Settings = {
   review_period_days: string;
   [key: string]: string;
 };
+
+// Workflow types
+export type WorkflowStep = {
+  id: number;
+  step_order: number;
+  status_key: string;
+  display_label: string;
+  color: string;
+  is_initial: boolean;
+  is_final: boolean;
+  requires_approval: boolean;
+  can_edit: boolean;
+  created_at: string;
+};
+
+export type WorkflowTransition = {
+  id: number;
+  from_status: string;
+  to_status: string;
+  requires_admin: boolean;
+  auto_creates_approval: boolean;
+};

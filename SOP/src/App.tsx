@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { ToastProvider } from './components/Toast';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { UserDashboard } from './pages/UserDashboard';
@@ -14,6 +15,7 @@ import { AdminSettings } from './pages/AdminSettings';
 import { AdminUsers } from './pages/AdminUsers';
 import { Approvals } from './pages/Approvals';
 import { ApprovalDetail } from './pages/ApprovalDetail';
+import { WorkflowSettings } from './pages/WorkflowSettings';
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
   const { user, loading, isAdmin } = useAuth();
@@ -74,6 +76,7 @@ function AppRoutes() {
 
       <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminSettings /></ProtectedRoute>} />
       <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsers /></ProtectedRoute>} />
+      <Route path="/admin/workflow" element={<ProtectedRoute adminOnly><WorkflowSettings /></ProtectedRoute>} />
 
       <Route path="/approvals" element={<ProtectedRoute adminOnly><Approvals /></ProtectedRoute>} />
       <Route path="/approvals/:id" element={<ProtectedRoute adminOnly><ApprovalDetail /></ProtectedRoute>} />
@@ -88,7 +91,9 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <ToastProvider>
+          <AppRoutes />
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   );
