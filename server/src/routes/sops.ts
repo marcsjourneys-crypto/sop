@@ -32,6 +32,7 @@ interface SopRow {
   related_documents: string | null;
   approved_by: number | null;
   review_due_date: string | null;
+  assigned_to: number | null;
   created_by: number | null;
   created_at: string;
   updated_at: string;
@@ -52,10 +53,11 @@ router.get('/', (req: AuthRequest, res: Response) => {
   `).run();
 
   const sops = db.prepare(`
-    SELECT s.*, u.name as created_by_name, a.name as approved_by_name
+    SELECT s.*, u.name as created_by_name, a.name as approved_by_name, asn.name as assigned_to_name
     FROM sops s
     LEFT JOIN users u ON s.created_by = u.id
     LEFT JOIN users a ON s.approved_by = a.id
+    LEFT JOIN users asn ON s.assigned_to = asn.id
     ORDER BY s.created_at DESC
   `).all();
 
@@ -67,10 +69,11 @@ router.get('/:id', (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
   const sop = db.prepare(`
-    SELECT s.*, u.name as created_by_name, a.name as approved_by_name
+    SELECT s.*, u.name as created_by_name, a.name as approved_by_name, asn.name as assigned_to_name
     FROM sops s
     LEFT JOIN users u ON s.created_by = u.id
     LEFT JOIN users a ON s.approved_by = a.id
+    LEFT JOIN users asn ON s.assigned_to = asn.id
     WHERE s.id = ?
   `).get(id) as SopRow | undefined;
 
@@ -184,6 +187,103 @@ router.delete('/:id', (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   db.prepare('DELETE FROM sops WHERE id = ?').run(id);
   res.json({ message: 'SOP deleted' });
+});
+
+// Update SOP status (for drag-and-drop)
+router.patch('/:id/status', (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  const sop = db.prepare('SELECT * FROM sops WHERE id = ?').get(id) as SopRow | undefined;
+  if (!sop) {
+    return res.status(404).json({ error: 'SOP not found' });
+  }
+
+  // Validate status transition
+  const validStatuses = ['draft', 'review', 'pending_approval', 'active'];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ error: 'Invalid status' });
+  }
+
+  // Enforce workflow rules
+  const currentStatus = sop.status;
+
+  // Cannot drag to pending_approval - must use submit-for-approval endpoint
+  if (status === 'pending_approval') {
+    return res.status(400).json({ error: 'Use submit-for-approval endpoint to change to pending_approval' });
+  }
+
+  // Cannot drag to active - must go through approval workflow
+  if (status === 'active' && currentStatus !== 'pending_approval') {
+    return res.status(400).json({ error: 'SOPs must be approved to become active' });
+  }
+
+  // Only admins can change from active to review
+  if (currentStatus === 'active' && status === 'review') {
+    if (req.user!.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can move active SOPs to review' });
+    }
+  }
+
+  // Cannot move from pending_approval via drag - must use approval workflow
+  if (currentStatus === 'pending_approval') {
+    return res.status(400).json({ error: 'SOPs pending approval must be approved or rejected through the approval workflow' });
+  }
+
+  // Update status
+  db.prepare(`
+    UPDATE sops SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+  `).run(status, id);
+
+  const updatedSop = db.prepare(`
+    SELECT s.*, u.name as created_by_name, a.name as approved_by_name, asn.name as assigned_to_name
+    FROM sops s
+    LEFT JOIN users u ON s.created_by = u.id
+    LEFT JOIN users a ON s.approved_by = a.id
+    LEFT JOIN users asn ON s.assigned_to = asn.id
+    WHERE s.id = ?
+  `).get(id);
+
+  res.json(updatedSop);
+});
+
+// Assign user to SOP (admin only)
+router.put('/:id/assign', (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { user_id } = req.body;
+
+  // Only admins can assign users
+  if (req.user!.role !== 'admin') {
+    return res.status(403).json({ error: 'Only admins can assign users to SOPs' });
+  }
+
+  const sop = db.prepare('SELECT * FROM sops WHERE id = ?').get(id) as SopRow | undefined;
+  if (!sop) {
+    return res.status(404).json({ error: 'SOP not found' });
+  }
+
+  // Validate user exists if user_id is provided
+  if (user_id !== null) {
+    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(user_id);
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+  }
+
+  db.prepare(`
+    UPDATE sops SET assigned_to = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+  `).run(user_id, id);
+
+  const updatedSop = db.prepare(`
+    SELECT s.*, u.name as created_by_name, a.name as approved_by_name, asn.name as assigned_to_name
+    FROM sops s
+    LEFT JOIN users u ON s.created_by = u.id
+    LEFT JOIN users a ON s.approved_by = a.id
+    LEFT JOIN users asn ON s.assigned_to = asn.id
+    WHERE s.id = ?
+  `).get(id);
+
+  res.json(updatedSop);
 });
 
 // === SOP Steps ===

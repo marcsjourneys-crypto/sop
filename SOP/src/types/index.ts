@@ -137,6 +137,8 @@ export type SOP = {
   approved_by: number | null;
   approved_by_name?: string;
   review_due_date: string | null;
+  assigned_to: number | null;
+  assigned_to_name?: string;
   created_by: number | null;
   created_by_name?: string;
   created_at: string;

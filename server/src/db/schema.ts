@@ -1,11 +1,11 @@
-import Database from 'better-sqlite3';
+import Database, { Database as DatabaseType } from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = path.join(__dirname, '..', '..', '..', 'database.sqlite');
 
-export const db = new Database(dbPath);
+export const db: DatabaseType = new Database(dbPath);
 
 export function initializeDatabase() {
   db.exec(`
@@ -46,6 +46,7 @@ export function initializeDatabase() {
       related_documents TEXT,
       approved_by INTEGER REFERENCES users(id),
       review_due_date TEXT,
+      assigned_to INTEGER REFERENCES users(id),
       created_by INTEGER REFERENCES users(id),
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -217,7 +218,15 @@ export function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_shadowing_sop_id ON shadowing_observations(sop_id);
     CREATE INDEX IF NOT EXISTS idx_sop_versions_sop_id ON sop_versions(sop_id);
     CREATE INDEX IF NOT EXISTS idx_sop_approvals_sop_id ON sop_approvals(sop_id);
+    CREATE INDEX IF NOT EXISTS idx_sops_assigned_to ON sops(assigned_to);
   `);
+
+  // Migration: Add assigned_to column to sops table if it doesn't exist
+  try {
+    db.exec(`ALTER TABLE sops ADD COLUMN assigned_to INTEGER REFERENCES users(id)`);
+  } catch {
+    // Column already exists, ignore
+  }
 
   // Insert default settings if not exist
   const insertSetting = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');

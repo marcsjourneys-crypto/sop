@@ -51,6 +51,20 @@ export const sops = {
     }),
   delete: (id: number) => request<{ message: string }>(`/sops/${id}`, { method: 'DELETE' }),
 
+  // Status update (for drag-and-drop)
+  updateStatus: (id: number, status: string) =>
+    request<SOP>(`/sops/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+
+  // User assignment
+  assign: (id: number, userId: number | null) =>
+    request<SOP>(`/sops/${id}/assign`, {
+      method: 'PUT',
+      body: JSON.stringify({ user_id: userId }),
+    }),
+
   // Steps
   addStep: (sopId: number) =>
     request<SOPStep>(`/sops/${sopId}/steps`, { method: 'POST' }),

@@ -1,9 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { Layout } from '../components/Layout';
 import { StatusBadge } from '../components/StatusBadge';
+import { DraggableSopCard } from '../components/DraggableSopCard';
+import { DroppableColumn } from '../components/DroppableColumn';
+import { AssignUserModal } from '../components/AssignUserModal';
 import { sops } from '../api/client';
-import type { SOP } from '../types';
+import { useAuth } from '../hooks/useAuth';
+import { canDrag, isDroppableColumn } from '../utils/permissions';
+import type { SOP, SOPStatus } from '../types';
 
 export function Dashboard() {
   const [sopList, setSopList] = useState<SOP[]>([]);
@@ -12,7 +19,11 @@ export function Dashboard() {
   const [filter, setFilter] = useState<'all' | 'draft' | 'active' | 'review'>('all');
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
+  const [assigneeFilter, setAssigneeFilter] = useState<number | 'all' | 'unassigned'>('all');
+  const [activeDragSop, setActiveDragSop] = useState<SOP | null>(null);
+  const [assignModalSop, setAssignModalSop] = useState<SOP | null>(null);
   const navigate = useNavigate();
+  const { user, isAdmin } = useAuth();
 
   useEffect(() => {
     loadSops();
@@ -51,6 +62,74 @@ export function Dashboard() {
       setError('Failed to delete SOP');
     }
   };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const sop = (active.data.current as { sop: SOP })?.sop;
+    if (sop) {
+      setActiveDragSop(sop);
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveDragSop(null);
+
+    if (!over) return;
+
+    const sop = (active.data.current as { sop: SOP })?.sop;
+    const targetStatus = (over.data.current as { status: SOPStatus })?.status;
+
+    if (!sop || !targetStatus || sop.status === targetStatus) return;
+
+    // Check if transition is allowed
+    if (!isDroppableColumn(targetStatus, sop.status, isAdmin)) {
+      setError(`Cannot move from ${sop.status} to ${targetStatus}`);
+      return;
+    }
+
+    // Optimistic update
+    const originalList = [...sopList];
+    setSopList(sopList.map(s =>
+      s.id === sop.id ? { ...s, status: targetStatus } : s
+    ));
+
+    try {
+      await sops.updateStatus(sop.id, targetStatus);
+    } catch (err) {
+      // Rollback on error
+      setSopList(originalList);
+      setError('Failed to update SOP status');
+    }
+  };
+
+  const handleAssign = async (sopId: number, userId: number | null) => {
+    const originalList = [...sopList];
+
+    try {
+      const updatedSop = await sops.assign(sopId, userId);
+      setSopList(sopList.map(s => s.id === sopId ? updatedSop : s));
+    } catch (err) {
+      setSopList(originalList);
+      setError('Failed to assign user');
+    }
+  };
+
+  // Get unique assignees for filter
+  const assignees = Array.from(
+    new Map(
+      sopList
+        .filter((s: SOP) => s.assigned_to !== null)
+        .map((s: SOP) => [s.assigned_to, { id: s.assigned_to!, name: s.assigned_to_name! }])
+    ).values()
+  );
+
+  // Filter SOPs for board view by assignee
+  const boardFilteredSops = sopList.filter((s: SOP) => {
+    if (assigneeFilter === 'all') return true;
+    if (assigneeFilter === 'unassigned') return s.assigned_to === null;
+    return s.assigned_to === assigneeFilter;
+  });
 
   const filteredSops = sopList.filter((sop) => {
     if (filter !== 'all' && sop.status !== filter) return false;
@@ -195,112 +274,145 @@ export function Dashboard() {
       )}
       </>
       ) : (
-        /* Board View */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Draft Column */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-700">Draft</h3>
-              <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs font-medium">
-                {sopList.filter(s => s.status === 'draft').length}
-              </span>
-            </div>
-            <div className="space-y-3">
-              {sopList.filter(s => s.status === 'draft').map(sop => (
-                <Link
-                  key={sop.id}
-                  to={`/sop/${sop.id}`}
-                  className="block bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow border-l-4 border-yellow-400"
-                >
-                  <div className="font-mono text-xs text-gray-500">{sop.sop_number}</div>
-                  <div className="font-medium text-gray-900 text-sm mt-1">{sop.process_name || 'Untitled'}</div>
-                  {sop.department && <div className="text-xs text-gray-500 mt-1">{sop.department}</div>}
-                </Link>
+        /* Board View with Drag and Drop */
+        <>
+          {/* Assignee Filter */}
+          <div className="mb-4 flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-700">Filter by assignee:</label>
+            <select
+              value={assigneeFilter === 'all' ? 'all' : assigneeFilter}
+              onChange={(e) => setAssigneeFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+              className="input max-w-xs"
+            >
+              <option value="all">All assignees</option>
+              <option value="unassigned">Unassigned</option>
+              {assignees.map(a => (
+                <option key={a.id} value={a.id}>{a.name}</option>
               ))}
-              {sopList.filter(s => s.status === 'draft').length === 0 && (
-                <div className="text-sm text-gray-400 text-center py-4">No drafts</div>
-              )}
-            </div>
+            </select>
           </div>
 
-          {/* Review Column */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-700">Review</h3>
-              <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-xs font-medium">
-                {sopList.filter(s => s.status === 'review').length}
-              </span>
-            </div>
-            <div className="space-y-3">
-              {sopList.filter(s => s.status === 'review').map(sop => (
-                <Link
-                  key={sop.id}
-                  to={`/sop/${sop.id}`}
-                  className="block bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow border-l-4 border-red-400"
-                >
-                  <div className="font-mono text-xs text-gray-500">{sop.sop_number}</div>
-                  <div className="font-medium text-gray-900 text-sm mt-1">{sop.process_name || 'Untitled'}</div>
-                  {sop.department && <div className="text-xs text-gray-500 mt-1">{sop.department}</div>}
-                </Link>
-              ))}
-              {sopList.filter(s => s.status === 'review').length === 0 && (
-                <div className="text-sm text-gray-400 text-center py-4">No reviews</div>
-              )}
-            </div>
-          </div>
+          <DndContext
+            collisionDetection={pointerWithin}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Draft Column */}
+              <DroppableColumn
+                status="draft"
+                title="Draft"
+                count={boardFilteredSops.filter(s => s.status === 'draft').length}
+                badgeColor="bg-yellow-100 text-yellow-800"
+                isDroppable={activeDragSop ? isDroppableColumn('draft', activeDragSop.status, isAdmin) : false}
+              >
+                {boardFilteredSops.filter(s => s.status === 'draft').map(sop => (
+                  <DraggableSopCard
+                    key={sop.id}
+                    sop={sop}
+                    isDraggable={canDrag(sop, user)}
+                    borderColor="border-yellow-400"
+                    onAssignClick={setAssignModalSop}
+                    isAdmin={isAdmin}
+                  />
+                ))}
+                {boardFilteredSops.filter(s => s.status === 'draft').length === 0 && (
+                  <div className="text-sm text-gray-400 text-center py-4">No drafts</div>
+                )}
+              </DroppableColumn>
 
-          {/* Pending Approval Column */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-700">Pending Approval</h3>
-              <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs font-medium">
-                {sopList.filter(s => s.status === 'pending_approval').length}
-              </span>
-            </div>
-            <div className="space-y-3">
-              {sopList.filter(s => s.status === 'pending_approval').map(sop => (
-                <Link
-                  key={sop.id}
-                  to={`/sop/${sop.id}`}
-                  className="block bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow border-l-4 border-blue-400"
-                >
-                  <div className="font-mono text-xs text-gray-500">{sop.sop_number}</div>
-                  <div className="font-medium text-gray-900 text-sm mt-1">{sop.process_name || 'Untitled'}</div>
-                  {sop.department && <div className="text-xs text-gray-500 mt-1">{sop.department}</div>}
-                </Link>
-              ))}
-              {sopList.filter(s => s.status === 'pending_approval').length === 0 && (
-                <div className="text-sm text-gray-400 text-center py-4">None pending</div>
-              )}
-            </div>
-          </div>
+              {/* Review Column */}
+              <DroppableColumn
+                status="review"
+                title="Review"
+                count={boardFilteredSops.filter(s => s.status === 'review').length}
+                badgeColor="bg-red-100 text-red-800"
+                isDroppable={activeDragSop ? isDroppableColumn('review', activeDragSop.status, isAdmin) : false}
+              >
+                {boardFilteredSops.filter(s => s.status === 'review').map(sop => (
+                  <DraggableSopCard
+                    key={sop.id}
+                    sop={sop}
+                    isDraggable={canDrag(sop, user)}
+                    borderColor="border-red-400"
+                    onAssignClick={setAssignModalSop}
+                    isAdmin={isAdmin}
+                  />
+                ))}
+                {boardFilteredSops.filter(s => s.status === 'review').length === 0 && (
+                  <div className="text-sm text-gray-400 text-center py-4">No reviews</div>
+                )}
+              </DroppableColumn>
 
-          {/* Active Column */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-700">Active</h3>
-              <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-medium">
-                {sopList.filter(s => s.status === 'active').length}
-              </span>
+              {/* Pending Approval Column */}
+              <DroppableColumn
+                status="pending_approval"
+                title="Pending Approval"
+                count={boardFilteredSops.filter(s => s.status === 'pending_approval').length}
+                badgeColor="bg-blue-100 text-blue-800"
+                isDroppable={false}
+              >
+                {boardFilteredSops.filter(s => s.status === 'pending_approval').map(sop => (
+                  <DraggableSopCard
+                    key={sop.id}
+                    sop={sop}
+                    isDraggable={false}
+                    borderColor="border-blue-400"
+                    onAssignClick={setAssignModalSop}
+                    isAdmin={isAdmin}
+                  />
+                ))}
+                {boardFilteredSops.filter(s => s.status === 'pending_approval').length === 0 && (
+                  <div className="text-sm text-gray-400 text-center py-4">None pending</div>
+                )}
+              </DroppableColumn>
+
+              {/* Active Column */}
+              <DroppableColumn
+                status="active"
+                title="Active"
+                count={boardFilteredSops.filter(s => s.status === 'active').length}
+                badgeColor="bg-green-100 text-green-800"
+                isDroppable={false}
+              >
+                {boardFilteredSops.filter(s => s.status === 'active').map(sop => (
+                  <DraggableSopCard
+                    key={sop.id}
+                    sop={sop}
+                    isDraggable={canDrag(sop, user)}
+                    borderColor="border-green-400"
+                    onAssignClick={setAssignModalSop}
+                    isAdmin={isAdmin}
+                  />
+                ))}
+                {boardFilteredSops.filter(s => s.status === 'active').length === 0 && (
+                  <div className="text-sm text-gray-400 text-center py-4">None active</div>
+                )}
+              </DroppableColumn>
             </div>
-            <div className="space-y-3">
-              {sopList.filter(s => s.status === 'active').map(sop => (
-                <Link
-                  key={sop.id}
-                  to={`/sop/${sop.id}`}
-                  className="block bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow border-l-4 border-green-400"
-                >
-                  <div className="font-mono text-xs text-gray-500">{sop.sop_number}</div>
-                  <div className="font-medium text-gray-900 text-sm mt-1">{sop.process_name || 'Untitled'}</div>
-                  {sop.department && <div className="text-xs text-gray-500 mt-1">{sop.department}</div>}
-                </Link>
-              ))}
-              {sopList.filter(s => s.status === 'active').length === 0 && (
-                <div className="text-sm text-gray-400 text-center py-4">None active</div>
+
+            {/* Drag Overlay */}
+            <DragOverlay>
+              {activeDragSop && (
+                <div className="bg-white rounded-lg p-3 shadow-lg border-l-4 border-esi-blue opacity-90">
+                  <div className="font-mono text-xs text-gray-500">{activeDragSop.sop_number}</div>
+                  <div className="font-medium text-gray-900 text-sm mt-1">
+                    {activeDragSop.process_name || 'Untitled'}
+                  </div>
+                </div>
               )}
-            </div>
-          </div>
-        </div>
+            </DragOverlay>
+          </DndContext>
+
+          {/* Assign User Modal */}
+          {assignModalSop && (
+            <AssignUserModal
+              sop={assignModalSop}
+              onClose={() => setAssignModalSop(null)}
+              onAssign={handleAssign}
+            />
+          )}
+        </>
       )}
     </Layout>
   );
