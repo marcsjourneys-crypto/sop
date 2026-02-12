@@ -1,16 +1,71 @@
-export interface User {
+// User types
+export type User = {
   id: number;
   email: string;
   name: string;
   role: 'admin' | 'user';
-}
+};
 
-export interface SOP {
+// SOP types
+export type SOPStatus = 'draft' | 'active' | 'review';
+
+export type SOPStep = {
+  id: number;
+  sop_id: number;
+  step_number: number;
+  action_name: string | null;
+  who_role: string | null;
+  action: string | null;
+  tools_used: string | null;
+  time_for_step: string | null;
+  standard: string | null;
+  common_mistakes: string | null;
+  sort_order: number;
+};
+
+export type SOPResponsibility = {
+  id: number;
+  sop_id: number;
+  role_name: string | null;
+  responsibility_description: string | null;
+};
+
+export type SOPTroubleshooting = {
+  id: number;
+  sop_id: number;
+  problem: string | null;
+  possible_cause: string | null;
+  solution: string | null;
+};
+
+export type SOPRevision = {
+  id: number;
+  sop_id: number;
+  revision_date: string | null;
+  description: string | null;
+  revised_by: string | null;
+};
+
+export type QuestionnairePreview = {
+  id: number;
+  employee_name: string | null;
+  interview_date: string | null;
+  created_at: string;
+};
+
+export type ShadowingPreview = {
+  id: number;
+  employee_observed: string | null;
+  observation_date: string | null;
+  created_at: string;
+};
+
+export type SOP = {
   id: number;
   sop_number: string;
   department: string | null;
   process_name: string | null;
-  status: 'draft' | 'active' | 'review';
+  status: SOPStatus;
   purpose: string | null;
   scope_applies_to: string | null;
   scope_not_applies_to: string | null;
@@ -41,60 +96,9 @@ export interface SOP {
   revisions?: SOPRevision[];
   questionnaires?: QuestionnairePreview[];
   shadowings?: ShadowingPreview[];
-}
+};
 
-export interface SOPStep {
-  id: number;
-  sop_id: number;
-  step_number: number;
-  action_name: string | null;
-  who_role: string | null;
-  action: string | null;
-  tools_used: string | null;
-  time_for_step: string | null;
-  standard: string | null;
-  common_mistakes: string | null;
-  sort_order: number;
-}
-
-export interface SOPResponsibility {
-  id: number;
-  sop_id: number;
-  role_name: string | null;
-  responsibility_description: string | null;
-}
-
-export interface SOPTroubleshooting {
-  id: number;
-  sop_id: number;
-  problem: string | null;
-  possible_cause: string | null;
-  solution: string | null;
-}
-
-export interface SOPRevision {
-  id: number;
-  sop_id: number;
-  revision_date: string | null;
-  description: string | null;
-  revised_by: string | null;
-}
-
-export interface QuestionnairePreview {
-  id: number;
-  employee_name: string | null;
-  interview_date: string | null;
-  created_at: string;
-}
-
-export interface ShadowingPreview {
-  id: number;
-  employee_observed: string | null;
-  observation_date: string | null;
-  created_at: string;
-}
-
-export interface Questionnaire {
+export type Questionnaire = {
   id: number;
   sop_id: number | null;
   sop_number?: string;
@@ -135,9 +139,9 @@ export interface Questionnaire {
   created_by: number | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface ShadowingObservation {
+export type ShadowingObservation = {
   id: number;
   sop_id: number | null;
   sop_number?: string;
@@ -189,9 +193,9 @@ export interface ShadowingObservation {
   created_by: number | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface Settings {
+export type Settings = {
   review_period_days: string;
   [key: string]: string;
-}
+};

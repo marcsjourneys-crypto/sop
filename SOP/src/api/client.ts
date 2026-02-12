@@ -1,4 +1,6 @@
-const API_BASE = 'http://localhost:3001/api';
+import type { User, SOP, SOPStep, SOPResponsibility, SOPTroubleshooting, SOPRevision, Questionnaire, ShadowingObservation, Settings } from '../types';
+
+const API_BASE = '/api';
 
 async function request<T>(
   endpoint: string,
@@ -24,12 +26,12 @@ async function request<T>(
 // Auth
 export const auth = {
   login: (email: string, password: string) =>
-    request<{ user: import('../types').User }>('/auth/login', {
+    request<{ user: User }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
   logout: () => request<{ message: string }>('/auth/logout', { method: 'POST' }),
-  me: () => request<{ user: import('../types').User }>('/auth/me'),
+  me: () => request<{ user: User }>('/auth/me'),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<{ message: string }>('/auth/change-password', {
       method: 'POST',
@@ -39,11 +41,11 @@ export const auth = {
 
 // SOPs
 export const sops = {
-  list: () => request<import('../types').SOP[]>('/sops'),
-  get: (id: number) => request<import('../types').SOP>(`/sops/${id}`),
-  create: () => request<import('../types').SOP>('/sops', { method: 'POST' }),
-  update: (id: number, data: Partial<import('../types').SOP>) =>
-    request<import('../types').SOP>(`/sops/${id}`, {
+  list: () => request<SOP[]>('/sops'),
+  get: (id: number) => request<SOP>(`/sops/${id}`),
+  create: () => request<SOP>('/sops', { method: 'POST' }),
+  update: (id: number, data: Partial<SOP>) =>
+    request<SOP>(`/sops/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -51,9 +53,9 @@ export const sops = {
 
   // Steps
   addStep: (sopId: number) =>
-    request<import('../types').SOPStep>(`/sops/${sopId}/steps`, { method: 'POST' }),
-  updateStep: (sopId: number, stepId: number, data: Partial<import('../types').SOPStep>) =>
-    request<import('../types').SOPStep>(`/sops/${sopId}/steps/${stepId}`, {
+    request<SOPStep>(`/sops/${sopId}/steps`, { method: 'POST' }),
+  updateStep: (sopId: number, stepId: number, data: Partial<SOPStep>) =>
+    request<SOPStep>(`/sops/${sopId}/steps/${stepId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -62,12 +64,12 @@ export const sops = {
 
   // Responsibilities
   addResponsibility: (sopId: number, data: { role_name?: string; responsibility_description?: string }) =>
-    request<import('../types').SOPResponsibility>(`/sops/${sopId}/responsibilities`, {
+    request<SOPResponsibility>(`/sops/${sopId}/responsibilities`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  updateResponsibility: (sopId: number, respId: number, data: Partial<import('../types').SOPResponsibility>) =>
-    request<import('../types').SOPResponsibility>(`/sops/${sopId}/responsibilities/${respId}`, {
+  updateResponsibility: (sopId: number, respId: number, data: Partial<SOPResponsibility>) =>
+    request<SOPResponsibility>(`/sops/${sopId}/responsibilities/${respId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -76,7 +78,7 @@ export const sops = {
 
   // Troubleshooting
   addTroubleshooting: (sopId: number, data: { problem?: string; possible_cause?: string; solution?: string }) =>
-    request<import('../types').SOPTroubleshooting>(`/sops/${sopId}/troubleshooting`, {
+    request<SOPTroubleshooting>(`/sops/${sopId}/troubleshooting`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -85,7 +87,7 @@ export const sops = {
 
   // Revisions
   addRevision: (sopId: number, data: { revision_date?: string; description?: string; revised_by?: string }) =>
-    request<import('../types').SOPRevision>(`/sops/${sopId}/revisions`, {
+    request<SOPRevision>(`/sops/${sopId}/revisions`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -93,15 +95,15 @@ export const sops = {
 
 // Questionnaires
 export const questionnaires = {
-  list: () => request<import('../types').Questionnaire[]>('/questionnaires'),
-  get: (id: number) => request<import('../types').Questionnaire>(`/questionnaires/${id}`),
+  list: () => request<Questionnaire[]>('/questionnaires'),
+  get: (id: number) => request<Questionnaire>(`/questionnaires/${id}`),
   create: (sopId?: number) =>
-    request<import('../types').Questionnaire>('/questionnaires', {
+    request<Questionnaire>('/questionnaires', {
       method: 'POST',
       body: JSON.stringify({ sop_id: sopId }),
     }),
-  update: (id: number, data: Partial<import('../types').Questionnaire>) =>
-    request<import('../types').Questionnaire>(`/questionnaires/${id}`, {
+  update: (id: number, data: Partial<Questionnaire>) =>
+    request<Questionnaire>(`/questionnaires/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -110,15 +112,15 @@ export const questionnaires = {
 
 // Shadowing
 export const shadowing = {
-  list: () => request<import('../types').ShadowingObservation[]>('/shadowing'),
-  get: (id: number) => request<import('../types').ShadowingObservation>(`/shadowing/${id}`),
+  list: () => request<ShadowingObservation[]>('/shadowing'),
+  get: (id: number) => request<ShadowingObservation>(`/shadowing/${id}`),
   create: (sopId?: number) =>
-    request<import('../types').ShadowingObservation>('/shadowing', {
+    request<ShadowingObservation>('/shadowing', {
       method: 'POST',
       body: JSON.stringify({ sop_id: sopId }),
     }),
-  update: (id: number, data: Partial<import('../types').ShadowingObservation>) =>
-    request<import('../types').ShadowingObservation>(`/shadowing/${id}`, {
+  update: (id: number, data: Partial<ShadowingObservation>) =>
+    request<ShadowingObservation>(`/shadowing/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -127,15 +129,15 @@ export const shadowing = {
 
 // Users (admin)
 export const users = {
-  list: () => request<import('../types').User[]>('/users'),
-  get: (id: number) => request<import('../types').User>(`/users/${id}`),
+  list: () => request<User[]>('/users'),
+  get: (id: number) => request<User>(`/users/${id}`),
   create: (data: { email: string; name: string; password: string; role?: 'admin' | 'user' }) =>
-    request<import('../types').User>('/users', {
+    request<User>('/users', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  update: (id: number, data: Partial<import('../types').User & { active?: number }>) =>
-    request<import('../types').User>(`/users/${id}`, {
+  update: (id: number, data: Partial<User & { active?: number }>) =>
+    request<User>(`/users/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -148,9 +150,9 @@ export const users = {
 
 // Settings
 export const settings = {
-  get: () => request<import('../types').Settings>('/settings'),
-  update: (data: Partial<import('../types').Settings>) =>
-    request<import('../types').Settings>('/settings', {
+  get: () => request<Settings>('/settings'),
+  update: (data: Partial<Settings>) =>
+    request<Settings>('/settings', {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
