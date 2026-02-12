@@ -218,7 +218,6 @@ export function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_shadowing_sop_id ON shadowing_observations(sop_id);
     CREATE INDEX IF NOT EXISTS idx_sop_versions_sop_id ON sop_versions(sop_id);
     CREATE INDEX IF NOT EXISTS idx_sop_approvals_sop_id ON sop_approvals(sop_id);
-    CREATE INDEX IF NOT EXISTS idx_sops_assigned_to ON sops(assigned_to);
   `);
 
   // Migration: Add assigned_to column to sops table if it doesn't exist
@@ -227,6 +226,9 @@ export function initializeDatabase() {
   } catch {
     // Column already exists, ignore
   }
+
+  // Create index for assigned_to (after migration ensures column exists)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_sops_assigned_to ON sops(assigned_to)`);
 
   // Insert default settings if not exist
   const insertSetting = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
