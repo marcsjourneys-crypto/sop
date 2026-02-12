@@ -10,6 +10,7 @@ import questionnairesRoutes from './routes/questionnaires.js';
 import shadowingRoutes from './routes/shadowing.js';
 import usersRoutes from './routes/users.js';
 import settingsRoutes from './routes/settings.js';
+import approvalsRoutes from './routes/approvals.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -33,6 +34,7 @@ app.use('/api/questionnaires', questionnairesRoutes);
 app.use('/api/shadowing', shadowingRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/approvals', approvalsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
