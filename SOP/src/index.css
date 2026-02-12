@@ -65,4 +65,58 @@
   .safety-box {
     @apply bg-red-50 border-l-4 border-red-500 p-4 my-4;
   }
+
+  /* Step Progress / Wizard Styles */
+  .step-progress {
+    @apply bg-white rounded-lg shadow-md p-4 mb-6 overflow-x-auto;
+  }
+
+  .step-progress-track {
+    @apply flex items-start justify-between min-w-max;
+  }
+
+  .step-progress-item {
+    @apply flex flex-col items-center relative flex-1;
+  }
+
+  .step-connector {
+    @apply absolute top-5 right-1/2 w-full h-0.5 bg-gray-300 -z-10;
+  }
+
+  .step-connector.completed {
+    @apply bg-esi-blue;
+  }
+
+  .step-circle {
+    @apply w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all cursor-pointer;
+  }
+
+  .step-circle.pending {
+    @apply bg-gray-200 text-gray-500 hover:bg-gray-300;
+  }
+
+  .step-circle.current {
+    @apply bg-esi-blue text-white ring-4 ring-blue-200;
+  }
+
+  .step-circle.completed {
+    @apply bg-esi-blue text-white hover:bg-esi-blue-dark;
+  }
+
+  .step-label {
+    @apply mt-2 text-xs text-gray-500 text-center whitespace-nowrap;
+  }
+
+  .step-label.current {
+    @apply text-esi-blue font-semibold;
+  }
+
+  /* Wizard Navigation */
+  .wizard-nav {
+    @apply flex justify-between items-center mt-6 pt-4 border-t border-gray-200;
+  }
+
+  .wizard-content {
+    @apply min-h-[400px];
+  }
 }
