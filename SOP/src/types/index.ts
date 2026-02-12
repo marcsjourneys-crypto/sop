@@ -33,6 +33,32 @@ export type SOPApproval = {
   comments: string | null;
 };
 
+export type ChangeItem = {
+  type: 'added' | 'modified' | 'removed' | 'reordered';
+  category: 'metadata' | 'step' | 'responsibility';
+  field: string;
+  label: string;
+  before?: string;
+  after?: string;
+};
+
+export type PendingApproval = {
+  id: number;
+  sop_id: number;
+  sop_number: string;
+  process_name: string | null;
+  department: string | null;
+  requested_by: { id: number; name: string };
+  requested_at: string;
+  change_count: number;
+  change_summary: string | null;
+  version: number;
+};
+
+export type ApprovalDetail = PendingApproval & {
+  changes: ChangeItem[];
+};
+
 export type SOPStep = {
   id: number;
   sop_id: number;
