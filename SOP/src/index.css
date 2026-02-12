@@ -119,4 +119,56 @@
   .wizard-content {
     @apply min-h-[400px];
   }
+
+  /* Mobile-specific utilities */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  .touch-target-lg {
+    @apply min-h-[56px];
+  }
+
+  /* Safe area padding for iOS notch and home indicator */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  /* Task card status borders */
+  .task-card {
+    @apply bg-white rounded-lg shadow-sm border-l-4 p-4 min-h-[80px] transition-colors;
+  }
+
+  .task-card-draft {
+    @apply border-l-yellow-400;
+  }
+
+  .task-card-review {
+    @apply border-l-red-400;
+  }
+
+  .task-card-pending {
+    @apply border-l-blue-400;
+  }
+
+  .task-card-active {
+    @apply border-l-green-400;
+  }
+
+  /* Mobile bottom navigation */
+  .bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center h-16 z-50;
+  }
+
+  .bottom-nav-item {
+    @apply flex flex-col items-center justify-center flex-1 h-full min-w-[80px] transition-colors text-gray-500;
+  }
+
+  .bottom-nav-item.active {
+    @apply text-esi-blue;
+  }
 }

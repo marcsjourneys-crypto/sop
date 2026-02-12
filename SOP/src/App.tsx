@@ -2,6 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
+import { UserDashboard } from './pages/UserDashboard';
+import { MySops } from './pages/MySops';
+import { UserProfile } from './pages/UserProfile';
 import { SOPDetail } from './pages/SOPDetail';
 import { SOPQuestionnaires } from './pages/SOPQuestionnaires';
 import { SOPShadowing } from './pages/SOPShadowing';
@@ -44,12 +47,21 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function DashboardRouter() {
+  const { isAdmin } = useAuth();
+  return isAdmin ? <Dashboard /> : <UserDashboard />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
 
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />
+
+      {/* User-specific routes */}
+      <Route path="/my-sops" element={<ProtectedRoute><MySops /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
 
       <Route path="/sop/:id" element={<ProtectedRoute><SOPDetail /></ProtectedRoute>} />
       <Route path="/sop/:id/questionnaires" element={<ProtectedRoute><SOPQuestionnaires /></ProtectedRoute>} />
