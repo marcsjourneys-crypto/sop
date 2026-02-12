@@ -117,6 +117,31 @@ router.put('/steps/:id', requireAdmin, (req, res) => {
   }
 });
 
+// Reorder workflow steps (admin only) - MUST be before /steps/:id route
+router.put('/steps/reorder', requireAdmin, (req, res) => {
+  const { order } = req.body; // Array of { id, step_order }
+
+  if (!Array.isArray(order)) {
+    return res.status(400).json({ error: 'order must be an array of { id, step_order }' });
+  }
+
+  try {
+    const updateOrder = db.prepare('UPDATE workflow_steps SET step_order = ? WHERE id = ?');
+    const transaction = db.transaction(() => {
+      for (const item of order) {
+        updateOrder.run(item.step_order, item.id);
+      }
+    });
+    transaction();
+
+    const steps = db.prepare('SELECT * FROM workflow_steps ORDER BY step_order ASC').all() as WorkflowStep[];
+    res.json(steps);
+  } catch (error) {
+    console.error('Error reordering workflow steps:', error);
+    res.status(500).json({ error: 'Failed to reorder workflow steps' });
+  }
+});
+
 // Delete a workflow step (admin only)
 router.delete('/steps/:id', requireAdmin, (req, res) => {
   const { id } = req.params;
@@ -152,31 +177,6 @@ router.delete('/steps/:id', requireAdmin, (req, res) => {
   } catch (error) {
     console.error('Error deleting workflow step:', error);
     res.status(500).json({ error: 'Failed to delete workflow step' });
-  }
-});
-
-// Reorder workflow steps (admin only)
-router.put('/steps/reorder', requireAdmin, (req, res) => {
-  const { order } = req.body; // Array of { id, step_order }
-
-  if (!Array.isArray(order)) {
-    return res.status(400).json({ error: 'order must be an array of { id, step_order }' });
-  }
-
-  try {
-    const updateOrder = db.prepare('UPDATE workflow_steps SET step_order = ? WHERE id = ?');
-    const transaction = db.transaction(() => {
-      for (const item of order) {
-        updateOrder.run(item.step_order, item.id);
-      }
-    });
-    transaction();
-
-    const steps = db.prepare('SELECT * FROM workflow_steps ORDER BY step_order ASC').all() as WorkflowStep[];
-    res.json(steps);
-  } catch (error) {
-    console.error('Error reordering workflow steps:', error);
-    res.status(500).json({ error: 'Failed to reorder workflow steps' });
   }
 });
 

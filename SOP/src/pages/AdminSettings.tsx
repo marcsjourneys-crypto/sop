@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { settings } from '../api/client';
 import type { Settings } from '../types';
@@ -52,30 +53,51 @@ export function AdminSettings() {
         </div>
       )}
 
-      <div className="card max-w-xl">
-        <h2 className="section-title">SOP Review Settings</h2>
+      <div className="grid gap-6 max-w-2xl">
+        {/* General Settings */}
+        <div className="card">
+          <h2 className="section-title">SOP Review Settings</h2>
 
-        <div className="form-group">
-          <label className="label">Review Period (days)</label>
-          <p className="text-sm text-gray-500 mb-2">
-            SOPs will be flagged for review after this many days from activation.
-          </p>
-          <input
-            type="number"
-            min="1"
-            value={form.review_period_days}
-            onChange={(e) => setForm({ ...form, review_period_days: e.target.value })}
-            className="input w-32"
-          />
+          <div className="form-group">
+            <label className="label">Review Period (days)</label>
+            <p className="text-sm text-gray-500 mb-2">
+              SOPs will be flagged for review after this many days from activation.
+            </p>
+            <input
+              type="number"
+              min="1"
+              value={form.review_period_days}
+              onChange={(e) => setForm({ ...form, review_period_days: e.target.value })}
+              className="input w-32"
+            />
+          </div>
+
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="btn btn-primary mt-4"
+          >
+            {saving ? 'Saving...' : 'Save Settings'}
+          </button>
         </div>
 
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="btn btn-primary mt-4"
+        {/* Workflow Settings Link */}
+        <Link
+          to="/admin/workflow"
+          className="card hover:shadow-md transition-shadow cursor-pointer"
         >
-          {saving ? 'Saving...' : 'Save Settings'}
-        </button>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="section-title mb-1">Workflow Configuration</h2>
+              <p className="text-sm text-gray-500">
+                Configure workflow steps, status colors, and transition rules.
+              </p>
+            </div>
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </Link>
       </div>
     </Layout>
   );

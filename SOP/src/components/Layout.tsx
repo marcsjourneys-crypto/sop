@@ -69,14 +69,6 @@ export function Layout({ children }: { children: ReactNode }) {
                     Users
                   </Link>
                   <Link
-                    to="/admin/workflow"
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive('/admin/workflow') ? 'bg-white/20' : 'hover:bg-white/10'
-                    }`}
-                  >
-                    Workflow
-                  </Link>
-                  <Link
                     to="/admin/settings"
                     className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                       isActive('/admin/settings') ? 'bg-white/20' : 'hover:bg-white/10'
