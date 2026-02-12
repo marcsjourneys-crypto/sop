@@ -1,4 +1,4 @@
-import type { User, SOP, SOPStep, SOPResponsibility, SOPTroubleshooting, SOPRevision, Questionnaire, ShadowingObservation, Settings } from '../types';
+import type { User, SOP, SOPStep, SOPResponsibility, SOPTroubleshooting, SOPRevision, SOPVersion, SOPApproval, Questionnaire, ShadowingObservation, Settings } from '../types';
 
 const API_BASE = '/api';
 
@@ -90,6 +90,39 @@ export const sops = {
     request<SOPRevision>(`/sops/${sopId}/revisions`, {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+
+  // Version History
+  getVersions: (sopId: number) =>
+    request<SOPVersion[]>(`/sops/${sopId}/versions`),
+  createVersion: (sopId: number, changeSummary?: string) =>
+    request<SOPVersion>(`/sops/${sopId}/versions`, {
+      method: 'POST',
+      body: JSON.stringify({ change_summary: changeSummary }),
+    }),
+  getVersion: (sopId: number, versionId: number) =>
+    request<SOPVersion>(`/sops/${sopId}/versions/${versionId}`),
+  restoreVersion: (sopId: number, versionId: number) =>
+    request<{ message: string; newVersion: number }>(`/sops/${sopId}/versions/${versionId}/restore`, {
+      method: 'POST',
+    }),
+
+  // Approval Workflow
+  getApprovals: (sopId: number) =>
+    request<SOPApproval[]>(`/sops/${sopId}/approvals`),
+  submitForApproval: (sopId: number) =>
+    request<SOPApproval>(`/sops/${sopId}/submit-for-approval`, {
+      method: 'POST',
+    }),
+  approve: (sopId: number, approvalId: number, comments?: string) =>
+    request<{ message: string }>(`/sops/${sopId}/approvals/${approvalId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ comments }),
+    }),
+  reject: (sopId: number, approvalId: number, comments: string) =>
+    request<{ message: string }>(`/sops/${sopId}/approvals/${approvalId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ comments }),
     }),
 };
 

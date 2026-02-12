@@ -11,7 +11,8 @@ interface SopRow {
   sop_number: string;
   department: string | null;
   process_name: string | null;
-  status: 'draft' | 'active' | 'review';
+  status: 'draft' | 'active' | 'review' | 'pending_approval';
+  version: number;
   purpose: string | null;
   scope_applies_to: string | null;
   scope_not_applies_to: string | null;
@@ -306,6 +307,306 @@ router.post('/:id/revisions', (req: AuthRequest, res: Response) => {
 
   const revision = db.prepare('SELECT * FROM sop_revisions WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(revision);
+});
+
+// === VERSION HISTORY ===
+
+// Get all versions for an SOP
+router.get('/:id/versions', (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+
+  const versions = db.prepare(`
+    SELECT v.*, u.name as created_by_name
+    FROM sop_versions v
+    LEFT JOIN users u ON v.created_by = u.id
+    WHERE v.sop_id = ?
+    ORDER BY v.version_number DESC
+  `).all(id);
+
+  res.json(versions);
+});
+
+// Create a new version (snapshot)
+router.post('/:id/versions', (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { change_summary } = req.body;
+
+  // Get current SOP data
+  const sop = db.prepare('SELECT * FROM sops WHERE id = ?').get(id) as SopRow | undefined;
+  if (!sop) {
+    return res.status(404).json({ error: 'SOP not found' });
+  }
+
+  const steps = db.prepare('SELECT * FROM sop_steps WHERE sop_id = ? ORDER BY sort_order').all(id);
+  const responsibilities = db.prepare('SELECT * FROM sop_responsibilities WHERE sop_id = ?').all(id);
+
+  // Create snapshot
+  const snapshot = JSON.stringify({ sop, steps, responsibilities });
+
+  // Get current version number
+  const currentVersion = db.prepare('SELECT MAX(version_number) as max FROM sop_versions WHERE sop_id = ?').get(id) as { max: number | null };
+  const nextVersion = (currentVersion.max || 0) + 1;
+
+  // Save version
+  const result = db.prepare(`
+    INSERT INTO sop_versions (sop_id, version_number, snapshot, change_summary, created_by)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(id, nextVersion, snapshot, change_summary || `Version ${nextVersion}`, req.user!.id);
+
+  // Update SOP version number
+  db.prepare('UPDATE sops SET version = ? WHERE id = ?').run(nextVersion, id);
+
+  const version = db.prepare(`
+    SELECT v.*, u.name as created_by_name
+    FROM sop_versions v
+    LEFT JOIN users u ON v.created_by = u.id
+    WHERE v.id = ?
+  `).get(result.lastInsertRowid);
+
+  res.status(201).json(version);
+});
+
+// Get a specific version
+router.get('/:id/versions/:versionId', (req: AuthRequest, res: Response) => {
+  const { versionId } = req.params;
+
+  const version = db.prepare(`
+    SELECT v.*, u.name as created_by_name
+    FROM sop_versions v
+    LEFT JOIN users u ON v.created_by = u.id
+    WHERE v.id = ?
+  `).get(versionId);
+
+  if (!version) {
+    return res.status(404).json({ error: 'Version not found' });
+  }
+
+  res.json(version);
+});
+
+// Restore a version
+router.post('/:id/versions/:versionId/restore', (req: AuthRequest, res: Response) => {
+  const { id, versionId } = req.params;
+
+  const version = db.prepare('SELECT * FROM sop_versions WHERE id = ? AND sop_id = ?').get(versionId, id) as { snapshot: string; version_number: number } | undefined;
+
+  if (!version) {
+    return res.status(404).json({ error: 'Version not found' });
+  }
+
+  const { sop, steps, responsibilities } = JSON.parse(version.snapshot);
+
+  // Update SOP fields (except id, sop_number, created_at)
+  db.prepare(`
+    UPDATE sops SET
+      department = ?,
+      process_name = ?,
+      purpose = ?,
+      scope_applies_to = ?,
+      scope_not_applies_to = ?,
+      tools = ?,
+      materials = ?,
+      time_total = ?,
+      time_searching = ?,
+      time_changing = ?,
+      time_changeover = ?,
+      quality_during = ?,
+      quality_final = ?,
+      quality_completion_criteria = ?,
+      documentation_required = ?,
+      documentation_signoff = ?,
+      safety_concerns = ?,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(
+    sop.department, sop.process_name, sop.purpose,
+    sop.scope_applies_to, sop.scope_not_applies_to,
+    sop.tools, sop.materials,
+    sop.time_total, sop.time_searching, sop.time_changing, sop.time_changeover,
+    sop.quality_during, sop.quality_final, sop.quality_completion_criteria,
+    sop.documentation_required, sop.documentation_signoff,
+    sop.safety_concerns, id
+  );
+
+  // Delete current steps and responsibilities
+  db.prepare('DELETE FROM sop_steps WHERE sop_id = ?').run(id);
+  db.prepare('DELETE FROM sop_responsibilities WHERE sop_id = ?').run(id);
+
+  // Restore steps
+  for (const step of steps) {
+    db.prepare(`
+      INSERT INTO sop_steps (sop_id, step_number, action_name, who_role, action, tools_used, time_for_step, standard, common_mistakes, sort_order)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, step.step_number, step.action_name, step.who_role, step.action, step.tools_used, step.time_for_step, step.standard, step.common_mistakes, step.sort_order);
+  }
+
+  // Restore responsibilities
+  for (const resp of responsibilities) {
+    db.prepare(`
+      INSERT INTO sop_responsibilities (sop_id, role_name, responsibility_description)
+      VALUES (?, ?, ?)
+    `).run(id, resp.role_name, resp.responsibility_description);
+  }
+
+  // Create a new version noting the restore
+  const currentVersion = db.prepare('SELECT MAX(version_number) as max FROM sop_versions WHERE sop_id = ?').get(id) as { max: number | null };
+  const newVersion = (currentVersion.max || 0) + 1;
+
+  db.prepare(`
+    INSERT INTO sop_versions (sop_id, version_number, snapshot, change_summary, created_by)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(id, newVersion, version.snapshot, `Restored from version ${version.version_number}`, req.user!.id);
+
+  db.prepare('UPDATE sops SET version = ? WHERE id = ?').run(newVersion, id);
+
+  res.json({ message: `Restored to version ${version.version_number}`, newVersion });
+});
+
+// === APPROVAL WORKFLOW ===
+
+// Get approval history for an SOP
+router.get('/:id/approvals', (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+
+  const approvals = db.prepare(`
+    SELECT a.*,
+      r.name as requested_by_name,
+      v.name as reviewed_by_name
+    FROM sop_approvals a
+    LEFT JOIN users r ON a.requested_by = r.id
+    LEFT JOIN users v ON a.reviewed_by = v.id
+    WHERE a.sop_id = ?
+    ORDER BY a.requested_at DESC
+  `).all(id);
+
+  res.json(approvals);
+});
+
+// Submit SOP for approval
+router.post('/:id/submit-for-approval', (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+
+  // Check if SOP exists and is in draft status
+  const sop = db.prepare('SELECT * FROM sops WHERE id = ?').get(id) as SopRow | undefined;
+  if (!sop) {
+    return res.status(404).json({ error: 'SOP not found' });
+  }
+
+  if (sop.status !== 'draft' && sop.status !== 'review') {
+    return res.status(400).json({ error: 'SOP must be in draft or review status to submit for approval' });
+  }
+
+  // Check for pending approval
+  const pendingApproval = db.prepare(`
+    SELECT * FROM sop_approvals WHERE sop_id = ? AND status = 'pending'
+  `).get(id);
+
+  if (pendingApproval) {
+    return res.status(400).json({ error: 'SOP already has a pending approval request' });
+  }
+
+  // Create a version snapshot before submitting
+  const steps = db.prepare('SELECT * FROM sop_steps WHERE sop_id = ? ORDER BY sort_order').all(id);
+  const responsibilities = db.prepare('SELECT * FROM sop_responsibilities WHERE sop_id = ?').all(id);
+  const snapshot = JSON.stringify({ sop, steps, responsibilities });
+
+  const currentVersion = db.prepare('SELECT MAX(version_number) as max FROM sop_versions WHERE sop_id = ?').get(id) as { max: number | null };
+  const nextVersion = (currentVersion.max || 0) + 1;
+
+  db.prepare(`
+    INSERT INTO sop_versions (sop_id, version_number, snapshot, change_summary, created_by)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(id, nextVersion, snapshot, 'Submitted for approval', req.user!.id);
+
+  db.prepare('UPDATE sops SET version = ? WHERE id = ?').run(nextVersion, id);
+
+  // Create approval request
+  const result = db.prepare(`
+    INSERT INTO sop_approvals (sop_id, requested_by)
+    VALUES (?, ?)
+  `).run(id, req.user!.id);
+
+  // Update SOP status
+  db.prepare(`UPDATE sops SET status = 'pending_approval', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(id);
+
+  const approval = db.prepare(`
+    SELECT a.*, u.name as requested_by_name
+    FROM sop_approvals a
+    LEFT JOIN users u ON a.requested_by = u.id
+    WHERE a.id = ?
+  `).get(result.lastInsertRowid);
+
+  res.status(201).json(approval);
+});
+
+// Approve SOP
+router.post('/:id/approvals/:approvalId/approve', (req: AuthRequest, res: Response) => {
+  const { id, approvalId } = req.params;
+  const { comments } = req.body;
+
+  // Only admins can approve
+  if (req.user!.role !== 'admin') {
+    return res.status(403).json({ error: 'Only admins can approve SOPs' });
+  }
+
+  const approval = db.prepare('SELECT * FROM sop_approvals WHERE id = ? AND sop_id = ?').get(approvalId, id);
+  if (!approval) {
+    return res.status(404).json({ error: 'Approval request not found' });
+  }
+
+  // Update approval record
+  db.prepare(`
+    UPDATE sop_approvals
+    SET status = 'approved', reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, comments = ?
+    WHERE id = ?
+  `).run(req.user!.id, comments || null, approvalId);
+
+  // Update SOP status to active and set review date
+  const reviewPeriod = db.prepare('SELECT value FROM settings WHERE key = ?').get('review_period_days') as { value: string } | undefined;
+  const reviewDays = parseInt(reviewPeriod?.value || '90');
+  const reviewDueDate = new Date(Date.now() + reviewDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  db.prepare(`
+    UPDATE sops
+    SET status = 'active', approved_by = ?, review_due_date = ?, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(req.user!.id, reviewDueDate, id);
+
+  res.json({ message: 'SOP approved successfully' });
+});
+
+// Reject SOP
+router.post('/:id/approvals/:approvalId/reject', (req: AuthRequest, res: Response) => {
+  const { id, approvalId } = req.params;
+  const { comments } = req.body;
+
+  // Only admins can reject
+  if (req.user!.role !== 'admin') {
+    return res.status(403).json({ error: 'Only admins can reject SOPs' });
+  }
+
+  if (!comments) {
+    return res.status(400).json({ error: 'Comments are required when rejecting' });
+  }
+
+  const approval = db.prepare('SELECT * FROM sop_approvals WHERE id = ? AND sop_id = ?').get(approvalId, id);
+  if (!approval) {
+    return res.status(404).json({ error: 'Approval request not found' });
+  }
+
+  // Update approval record
+  db.prepare(`
+    UPDATE sop_approvals
+    SET status = 'rejected', reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, comments = ?
+    WHERE id = ?
+  `).run(req.user!.id, comments, approvalId);
+
+  // Update SOP status back to draft
+  db.prepare(`
+    UPDATE sops SET status = 'draft', updated_at = CURRENT_TIMESTAMP WHERE id = ?
+  `).run(id);
+
+  res.json({ message: 'SOP rejected', comments });
 });
 
 export default router;

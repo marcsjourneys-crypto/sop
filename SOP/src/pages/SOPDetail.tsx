@@ -5,8 +5,9 @@ import { StatusBadge } from '../components/StatusBadge';
 import { SaveIndicator } from '../components/SaveIndicator';
 import { StepProgress } from '../components/StepProgress';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { useAuth } from '../hooks/useAuth';
 import { sops } from '../api/client';
-import type { SOP, SOPStep } from '../types';
+import type { SOP, SOPStep, SOPVersion, SOPApproval } from '../types';
 
 const WIZARD_STEPS = [
   { id: 1, name: 'Basic Information', shortName: 'Basics' },
@@ -17,15 +18,21 @@ const WIZARD_STEPS = [
   { id: 6, name: 'Quality Checkpoints', shortName: 'Quality' },
   { id: 7, name: 'Safety & Documentation', shortName: 'Safety' },
   { id: 8, name: 'Review & Links', shortName: 'Review' },
+  { id: 9, name: 'History & Approvals', shortName: 'History' },
 ];
 
 export function SOPDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [sop, setSop] = useState<SOP | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentStep, setCurrentStep] = useState(0);
+  const [versions, setVersions] = useState<SOPVersion[]>([]);
+  const [approvals, setApprovals] = useState<SOPApproval[]>([]);
+  const [approvalComment, setApprovalComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const loadSop = useCallback(async () => {
     if (!id) return;
@@ -39,9 +46,29 @@ export function SOPDetail() {
     }
   }, [id]);
 
+  const loadVersionsAndApprovals = useCallback(async () => {
+    if (!id) return;
+    try {
+      const [versionsData, approvalsData] = await Promise.all([
+        sops.getVersions(parseInt(id)),
+        sops.getApprovals(parseInt(id))
+      ]);
+      setVersions(versionsData);
+      setApprovals(approvalsData);
+    } catch (err) {
+      console.error('Failed to load versions/approvals');
+    }
+  }, [id]);
+
   useEffect(() => {
     loadSop();
   }, [loadSop]);
+
+  useEffect(() => {
+    if (sop) {
+      loadVersionsAndApprovals();
+    }
+  }, [sop?.id, loadVersionsAndApprovals]);
 
   const handleSave = useCallback(async (data: Partial<SOP>) => {
     if (!id) return;
@@ -159,6 +186,77 @@ export function SOPDetail() {
       navigate('/dashboard');
     } catch (err) {
       setError('Failed to delete SOP');
+    }
+  };
+
+  // Version History handlers
+  const handleCreateVersion = async (changeSummary: string) => {
+    if (!id) return;
+    try {
+      await sops.createVersion(parseInt(id), changeSummary);
+      await loadVersionsAndApprovals();
+      await loadSop();
+    } catch (err) {
+      setError('Failed to create version');
+    }
+  };
+
+  const handleRestoreVersion = async (versionId: number) => {
+    if (!id || !confirm('Restore this version? Current changes will be saved as a new version first.')) return;
+    try {
+      await sops.restoreVersion(parseInt(id), versionId);
+      await loadSop();
+      await loadVersionsAndApprovals();
+    } catch (err) {
+      setError('Failed to restore version');
+    }
+  };
+
+  // Approval Workflow handlers
+  const handleSubmitForApproval = async () => {
+    if (!id) return;
+    setSubmitting(true);
+    try {
+      await sops.submitForApproval(parseInt(id));
+      await loadSop();
+      await loadVersionsAndApprovals();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit for approval');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleApprove = async (approvalId: number) => {
+    if (!id) return;
+    setSubmitting(true);
+    try {
+      await sops.approve(parseInt(id), approvalId, approvalComment);
+      setApprovalComment('');
+      await loadSop();
+      await loadVersionsAndApprovals();
+    } catch (err) {
+      setError('Failed to approve');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReject = async (approvalId: number) => {
+    if (!id || !approvalComment.trim()) {
+      setError('Please provide a reason for rejection');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await sops.reject(parseInt(id), approvalId, approvalComment);
+      setApprovalComment('');
+      await loadSop();
+      await loadVersionsAndApprovals();
+    } catch (err) {
+      setError('Failed to reject');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -640,6 +738,182 @@ export function SOPDetail() {
     </div>
   );
 
+  const renderHistoryStep = () => {
+    const pendingApproval = approvals.find(a => a.status === 'pending');
+
+    return (
+      <div className="space-y-6">
+        {/* Approval Workflow */}
+        <div className="card">
+          <h2 className="section-title">Approval Workflow</h2>
+
+          {/* Submit for Approval (Draft/Review status) */}
+          {(sop?.status === 'draft' || sop?.status === 'review') && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <p className="text-blue-800 mb-3">
+                Ready to submit this SOP for admin approval? A version snapshot will be created automatically.
+              </p>
+              <button
+                onClick={handleSubmitForApproval}
+                disabled={submitting}
+                className="btn btn-primary"
+              >
+                {submitting ? 'Submitting...' : 'Submit for Approval'}
+              </button>
+            </div>
+          )}
+
+          {/* Pending Approval (Admin actions) */}
+          {sop?.status === 'pending_approval' && pendingApproval && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <p className="text-yellow-800 mb-2">
+                <strong>Awaiting Approval</strong> - Submitted by {pendingApproval.requested_by_name} on {new Date(pendingApproval.requested_at).toLocaleDateString()}
+              </p>
+
+              {isAdmin && (
+                <div className="mt-4">
+                  <div className="form-group">
+                    <label className="label">Comments (required for rejection)</label>
+                    <textarea
+                      value={approvalComment}
+                      onChange={(e) => setApprovalComment(e.target.value)}
+                      className="input min-h-[80px]"
+                      placeholder="Add comments for approval or rejection..."
+                    />
+                  </div>
+                  <div className="flex gap-3 mt-3">
+                    <button
+                      onClick={() => handleApprove(pendingApproval.id)}
+                      disabled={submitting}
+                      className="btn btn-primary"
+                    >
+                      {submitting ? 'Processing...' : 'Approve'}
+                    </button>
+                    <button
+                      onClick={() => handleReject(pendingApproval.id)}
+                      disabled={submitting || !approvalComment.trim()}
+                      className="btn btn-danger"
+                    >
+                      {submitting ? 'Processing...' : 'Reject'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!isAdmin && (
+                <p className="text-gray-600 text-sm mt-2">
+                  An admin will review this SOP shortly.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Active Status */}
+          {sop?.status === 'active' && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+              <p className="text-green-800">
+                This SOP is <strong>Active</strong> and approved.
+                {sop.review_due_date && ` Next review due: ${new Date(sop.review_due_date).toLocaleDateString()}`}
+              </p>
+            </div>
+          )}
+
+          {/* Approval History */}
+          <h3 className="font-semibold mt-6 mb-3">Approval History</h3>
+          {approvals.length === 0 ? (
+            <p className="text-gray-500">No approval history yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {approvals.map((approval) => (
+                <div
+                  key={approval.id}
+                  className={`p-3 rounded-lg border ${
+                    approval.status === 'approved' ? 'bg-green-50 border-green-200' :
+                    approval.status === 'rejected' ? 'bg-red-50 border-red-200' :
+                    'bg-yellow-50 border-yellow-200'
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className={`font-semibold ${
+                        approval.status === 'approved' ? 'text-green-800' :
+                        approval.status === 'rejected' ? 'text-red-800' :
+                        'text-yellow-800'
+                      }`}>
+                        {approval.status.charAt(0).toUpperCase() + approval.status.slice(1)}
+                      </span>
+                      <span className="text-gray-600 ml-2">
+                        Requested by {approval.requested_by_name}
+                      </span>
+                    </div>
+                    <span className="text-sm text-gray-500">
+                      {new Date(approval.requested_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {approval.reviewed_by_name && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      Reviewed by {approval.reviewed_by_name} on {new Date(approval.reviewed_at!).toLocaleDateString()}
+                    </p>
+                  )}
+                  {approval.comments && (
+                    <p className="text-sm mt-2 italic">"{approval.comments}"</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Version History */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="section-title mb-0">Version History</h2>
+            <button
+              onClick={() => {
+                const summary = prompt('Enter a brief description of changes:');
+                if (summary) handleCreateVersion(summary);
+              }}
+              className="btn btn-secondary text-sm"
+            >
+              + Save Version
+            </button>
+          </div>
+
+          <p className="text-gray-600 mb-4">
+            Current version: <strong>v{sop?.version || 1}</strong>
+          </p>
+
+          {versions.length === 0 ? (
+            <p className="text-gray-500">No versions saved yet. Click "Save Version" to create a snapshot.</p>
+          ) : (
+            <div className="space-y-3">
+              {versions.map((version) => (
+                <div key={version.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="font-semibold text-esi-blue">Version {version.version_number}</span>
+                      <span className="text-gray-600 ml-2">by {version.created_by_name}</span>
+                    </div>
+                    <span className="text-sm text-gray-500">
+                      {new Date(version.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700 mt-1">{version.change_summary}</p>
+                  <button
+                    onClick={() => handleRestoreVersion(version.id)}
+                    className="text-esi-blue hover:underline text-sm mt-2"
+                  >
+                    Restore this version
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // Render the current step content
   const renderCurrentStep = () => {
     switch (currentStep) {
@@ -651,6 +925,7 @@ export function SOPDetail() {
       case 5: return renderQualityStep();
       case 6: return renderSafetyStep();
       case 7: return renderReviewStep();
+      case 8: return renderHistoryStep();
       default: return renderBasicsStep();
     }
   };
@@ -677,14 +952,19 @@ export function SOPDetail() {
           </div>
           <div className="flex items-center gap-4">
             <SaveIndicator saving={saving} lastSaved={lastSaved} error={saveError} />
+            {sop.version && <span className="text-sm text-gray-500">v{sop.version}</span>}
             <select
               value={sop.status}
               onChange={(e) => handleStatusChange(e.target.value as 'draft' | 'active' | 'review')}
               className="input w-auto"
+              disabled={sop.status === 'pending_approval'}
             >
               <option value="draft">Draft</option>
               <option value="active">Active</option>
               <option value="review">Review</option>
+              {sop.status === 'pending_approval' && (
+                <option value="pending_approval">Pending Approval</option>
+              )}
             </select>
           </div>
         </div>

@@ -25,7 +25,8 @@ export function initializeDatabase() {
       sop_number TEXT UNIQUE NOT NULL,
       department TEXT,
       process_name TEXT,
-      status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'review')),
+      status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'review', 'pending_approval')),
+      version INTEGER DEFAULT 1,
       purpose TEXT,
       scope_applies_to TEXT,
       scope_not_applies_to TEXT,
@@ -185,12 +186,37 @@ export function initializeDatabase() {
       value TEXT NOT NULL
     );
 
+    -- Version History: stores complete SOP snapshots
+    CREATE TABLE IF NOT EXISTS sop_versions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sop_id INTEGER NOT NULL REFERENCES sops(id) ON DELETE CASCADE,
+      version_number INTEGER NOT NULL,
+      snapshot TEXT NOT NULL,
+      change_summary TEXT,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Approval Workflow
+    CREATE TABLE IF NOT EXISTS sop_approvals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sop_id INTEGER NOT NULL REFERENCES sops(id) ON DELETE CASCADE,
+      requested_by INTEGER REFERENCES users(id),
+      requested_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+      reviewed_by INTEGER REFERENCES users(id),
+      reviewed_at TEXT,
+      comments TEXT
+    );
+
     -- Create indexes for better query performance
     CREATE INDEX IF NOT EXISTS idx_sops_status ON sops(status);
     CREATE INDEX IF NOT EXISTS idx_sops_department ON sops(department);
     CREATE INDEX IF NOT EXISTS idx_sop_steps_sop_id ON sop_steps(sop_id);
     CREATE INDEX IF NOT EXISTS idx_questionnaires_sop_id ON questionnaires(sop_id);
     CREATE INDEX IF NOT EXISTS idx_shadowing_sop_id ON shadowing_observations(sop_id);
+    CREATE INDEX IF NOT EXISTS idx_sop_versions_sop_id ON sop_versions(sop_id);
+    CREATE INDEX IF NOT EXISTS idx_sop_approvals_sop_id ON sop_approvals(sop_id);
   `);
 
   // Insert default settings if not exist

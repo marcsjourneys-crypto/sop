@@ -7,7 +7,31 @@ export type User = {
 };
 
 // SOP types
-export type SOPStatus = 'draft' | 'active' | 'review';
+export type SOPStatus = 'draft' | 'active' | 'review' | 'pending_approval';
+
+export type SOPVersion = {
+  id: number;
+  sop_id: number;
+  version_number: number;
+  snapshot: string;
+  change_summary: string | null;
+  created_by: number | null;
+  created_by_name?: string;
+  created_at: string;
+};
+
+export type SOPApproval = {
+  id: number;
+  sop_id: number;
+  requested_by: number | null;
+  requested_by_name?: string;
+  requested_at: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewed_by: number | null;
+  reviewed_by_name?: string;
+  reviewed_at: string | null;
+  comments: string | null;
+};
 
 export type SOPStep = {
   id: number;
@@ -66,6 +90,7 @@ export type SOP = {
   department: string | null;
   process_name: string | null;
   status: SOPStatus;
+  version: number;
   purpose: string | null;
   scope_applies_to: string | null;
   scope_not_applies_to: string | null;

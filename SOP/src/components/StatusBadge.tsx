@@ -1,5 +1,5 @@
 interface StatusBadgeProps {
-  status: 'draft' | 'active' | 'review';
+  status: 'draft' | 'active' | 'review' | 'pending_approval';
 }
 
 const statusConfig = {
@@ -14,6 +14,10 @@ const statusConfig = {
   review: {
     label: 'Review',
     className: 'bg-red-100 text-red-800 border-red-300',
+  },
+  pending_approval: {
+    label: 'Pending Approval',
+    className: 'bg-blue-100 text-blue-800 border-blue-300',
   },
 };
 
