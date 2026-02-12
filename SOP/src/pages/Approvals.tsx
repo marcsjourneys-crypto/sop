@@ -9,7 +9,6 @@ export function Approvals() {
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'list' | 'kanban'>('list');
 
   useEffect(() => {
     loadApprovals();
@@ -73,35 +72,8 @@ export function Approvals() {
           )}
         </div>
 
-        {/* Tabs */}
-        <div className="border-b border-gray-200">
-          <nav className="flex gap-4">
-            <button
-              onClick={() => setActiveTab('list')}
-              className={`pb-3 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'list'
-                  ? 'border-esi-blue text-esi-blue'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              List
-            </button>
-            <button
-              onClick={() => setActiveTab('kanban')}
-              className={`pb-3 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'kanban'
-                  ? 'border-esi-blue text-esi-blue'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Kanban
-            </button>
-          </nav>
-        </div>
-
         {/* Content */}
-        {activeTab === 'list' ? (
-          pendingApprovals.length === 0 ? (
+        {pendingApprovals.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-5xl mb-4">&#10003;</div>
               <h3 className="text-lg font-medium text-gray-900">No pending approvals</h3>
@@ -143,22 +115,7 @@ export function Approvals() {
                 </div>
               ))}
             </div>
-          )
-        ) : (
-          /* Kanban placeholder */
-          <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-12 text-center">
-            <div className="text-4xl mb-4">&#128679;</div>
-            <h3 className="text-lg font-medium text-gray-900">Kanban view coming soon</h3>
-            <p className="text-gray-500 mt-2 max-w-md mx-auto">
-              This will include:
-            </p>
-            <ul className="text-gray-500 mt-2 text-sm">
-              <li>&#8226; Visual pipeline (Pending &#8594; In Review &#8594; Done)</li>
-              <li>&#8226; Assign reviews to team members</li>
-              <li>&#8226; Drag-and-drop workflow</li>
-            </ul>
-          </div>
-        )}
+          )}
       </div>
     </Layout>
   );

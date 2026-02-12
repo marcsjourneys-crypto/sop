@@ -11,6 +11,7 @@ export function Dashboard() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<'all' | 'draft' | 'active' | 'review'>('all');
   const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -86,6 +87,34 @@ export function Dashboard() {
         </div>
       )}
 
+      {/* View Mode Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="flex gap-4">
+          <button
+            onClick={() => setViewMode('list')}
+            className={`pb-3 px-1 border-b-2 font-medium text-sm ${
+              viewMode === 'list'
+                ? 'border-esi-blue text-esi-blue'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            List
+          </button>
+          <button
+            onClick={() => setViewMode('board')}
+            className={`pb-3 px-1 border-b-2 font-medium text-sm ${
+              viewMode === 'board'
+                ? 'border-esi-blue text-esi-blue'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Board
+          </button>
+        </nav>
+      </div>
+
+      {viewMode === 'list' ? (
+      <>
       <div className="card mb-6">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
@@ -162,6 +191,115 @@ export function Dashboard() {
               </button>
             </div>
           ))}
+        </div>
+      )}
+      </>
+      ) : (
+        /* Board View */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Draft Column */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-700">Draft</h3>
+              <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                {sopList.filter(s => s.status === 'draft').length}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {sopList.filter(s => s.status === 'draft').map(sop => (
+                <Link
+                  key={sop.id}
+                  to={`/sop/${sop.id}`}
+                  className="block bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow border-l-4 border-yellow-400"
+                >
+                  <div className="font-mono text-xs text-gray-500">{sop.sop_number}</div>
+                  <div className="font-medium text-gray-900 text-sm mt-1">{sop.process_name || 'Untitled'}</div>
+                  {sop.department && <div className="text-xs text-gray-500 mt-1">{sop.department}</div>}
+                </Link>
+              ))}
+              {sopList.filter(s => s.status === 'draft').length === 0 && (
+                <div className="text-sm text-gray-400 text-center py-4">No drafts</div>
+              )}
+            </div>
+          </div>
+
+          {/* Review Column */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-700">Review</h3>
+              <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                {sopList.filter(s => s.status === 'review').length}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {sopList.filter(s => s.status === 'review').map(sop => (
+                <Link
+                  key={sop.id}
+                  to={`/sop/${sop.id}`}
+                  className="block bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow border-l-4 border-red-400"
+                >
+                  <div className="font-mono text-xs text-gray-500">{sop.sop_number}</div>
+                  <div className="font-medium text-gray-900 text-sm mt-1">{sop.process_name || 'Untitled'}</div>
+                  {sop.department && <div className="text-xs text-gray-500 mt-1">{sop.department}</div>}
+                </Link>
+              ))}
+              {sopList.filter(s => s.status === 'review').length === 0 && (
+                <div className="text-sm text-gray-400 text-center py-4">No reviews</div>
+              )}
+            </div>
+          </div>
+
+          {/* Pending Approval Column */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-700">Pending Approval</h3>
+              <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                {sopList.filter(s => s.status === 'pending_approval').length}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {sopList.filter(s => s.status === 'pending_approval').map(sop => (
+                <Link
+                  key={sop.id}
+                  to={`/sop/${sop.id}`}
+                  className="block bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow border-l-4 border-blue-400"
+                >
+                  <div className="font-mono text-xs text-gray-500">{sop.sop_number}</div>
+                  <div className="font-medium text-gray-900 text-sm mt-1">{sop.process_name || 'Untitled'}</div>
+                  {sop.department && <div className="text-xs text-gray-500 mt-1">{sop.department}</div>}
+                </Link>
+              ))}
+              {sopList.filter(s => s.status === 'pending_approval').length === 0 && (
+                <div className="text-sm text-gray-400 text-center py-4">None pending</div>
+              )}
+            </div>
+          </div>
+
+          {/* Active Column */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-700">Active</h3>
+              <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                {sopList.filter(s => s.status === 'active').length}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {sopList.filter(s => s.status === 'active').map(sop => (
+                <Link
+                  key={sop.id}
+                  to={`/sop/${sop.id}`}
+                  className="block bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow border-l-4 border-green-400"
+                >
+                  <div className="font-mono text-xs text-gray-500">{sop.sop_number}</div>
+                  <div className="font-medium text-gray-900 text-sm mt-1">{sop.process_name || 'Untitled'}</div>
+                  {sop.department && <div className="text-xs text-gray-500 mt-1">{sop.department}</div>}
+                </Link>
+              ))}
+              {sopList.filter(s => s.status === 'active').length === 0 && (
+                <div className="text-sm text-gray-400 text-center py-4">None active</div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </Layout>
