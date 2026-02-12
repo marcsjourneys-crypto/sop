@@ -78,6 +78,7 @@ export function DraggableSopCard({
               e.stopPropagation();
               onAssignClick(sop);
             }}
+            onPointerDown={(e) => e.stopPropagation()}
             className="p-1 text-gray-400 hover:text-esi-blue rounded transition-colors"
             title="Assign user"
           >

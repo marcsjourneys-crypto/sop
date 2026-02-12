@@ -243,6 +243,14 @@ export function Dashboard() {
                     <div className="flex items-center gap-3 mb-1">
                       <span className="font-mono font-bold text-esi-blue">{sop.sop_number}</span>
                       <StatusBadge status={sop.status} />
+                      {sop.assigned_to_name && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                          {sop.assigned_to_name}
+                        </span>
+                      )}
                     </div>
                     <h3 className="font-semibold text-gray-900">
                       {sop.process_name || 'Untitled Process'}
@@ -285,15 +293,32 @@ export function Dashboard() {
                   {sop.shadowing_count || 0}
                 </Link>
               </div>
-              <button
-                onClick={(e) => handleDeleteSop(e, sop.id, sop.sop_number)}
-                className="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                title="Delete SOP"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
+              <div className="absolute top-2 right-2 flex items-center gap-1">
+                {isAdmin && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setAssignModalSop(sop);
+                    }}
+                    className="p-2 text-gray-400 hover:text-esi-blue hover:bg-blue-50 rounded-md transition-colors"
+                    title="Assign user"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                  </button>
+                )}
+                <button
+                  onClick={(e) => handleDeleteSop(e, sop.id, sop.sop_number)}
+                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                  title="Delete SOP"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -430,15 +455,16 @@ export function Dashboard() {
             </DragOverlay>
           </DndContext>
 
-          {/* Assign User Modal */}
-          {assignModalSop && (
-            <AssignUserModal
-              sop={assignModalSop}
-              onClose={() => setAssignModalSop(null)}
-              onAssign={handleAssign}
-            />
-          )}
         </>
+      )}
+
+      {/* Assign User Modal - available in both list and board views */}
+      {assignModalSop && (
+        <AssignUserModal
+          sop={assignModalSop}
+          onClose={() => setAssignModalSop(null)}
+          onAssign={handleAssign}
+        />
       )}
     </Layout>
   );
