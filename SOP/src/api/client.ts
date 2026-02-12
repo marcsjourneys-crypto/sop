@@ -1,4 +1,4 @@
-import type { User, SOP, SOPStep, SOPResponsibility, SOPTroubleshooting, SOPRevision, SOPVersion, SOPApproval, Questionnaire, ShadowingObservation, Settings } from '../types';
+import type { User, SOP, SOPStep, SOPResponsibility, SOPTroubleshooting, SOPRevision, SOPVersion, SOPApproval, Questionnaire, ShadowingObservation, Settings, PendingApproval, ApprovalDetail, ChangeItem } from '../types';
 
 const API_BASE = '/api';
 
@@ -114,6 +114,24 @@ export const sops = {
     request<SOPApproval>(`/sops/${sopId}/submit-for-approval`, {
       method: 'POST',
     }),
+  approve: (sopId: number, approvalId: number, comments?: string) =>
+    request<{ message: string }>(`/sops/${sopId}/approvals/${approvalId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ comments }),
+    }),
+  reject: (sopId: number, approvalId: number, comments: string) =>
+    request<{ message: string }>(`/sops/${sopId}/approvals/${approvalId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ comments }),
+    }),
+};
+
+// Approvals (admin)
+export const approvals = {
+  list: () => request<{ approvals: PendingApproval[] }>('/approvals'),
+  get: (id: number) => request<ApprovalDetail>(`/approvals/${id}`),
+  getChanges: (id: number) => request<{ approval_id: number; sop_id: number; version: number; previous_version: number; changes: ChangeItem[] }>(`/approvals/${id}/changes`),
+  getCount: () => request<{ count: number }>('/approvals/count'),
   approve: (sopId: number, approvalId: number, comments?: string) =>
     request<{ message: string }>(`/sops/${sopId}/approvals/${approvalId}/approve`, {
       method: 'POST',
