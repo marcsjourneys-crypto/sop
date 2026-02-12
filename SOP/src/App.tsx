@@ -7,6 +7,8 @@ import { QuestionnaireForm } from './pages/QuestionnaireForm';
 import { ShadowingForm } from './pages/ShadowingForm';
 import { AdminSettings } from './pages/AdminSettings';
 import { AdminUsers } from './pages/AdminUsers';
+import { Approvals } from './pages/Approvals';
+import { ApprovalDetail } from './pages/ApprovalDetail';
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
   const { user, loading, isAdmin } = useAuth();
@@ -56,6 +58,9 @@ function AppRoutes() {
 
       <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminSettings /></ProtectedRoute>} />
       <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsers /></ProtectedRoute>} />
+
+      <Route path="/approvals" element={<ProtectedRoute adminOnly><Approvals /></ProtectedRoute>} />
+      <Route path="/approvals/:id" element={<ProtectedRoute adminOnly><ApprovalDetail /></ProtectedRoute>} />
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
